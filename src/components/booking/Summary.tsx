@@ -1,0 +1,55 @@
+import { useLocale } from '@/context/LocaleContext'
+import { formatMoney } from '@/lib/money'
+import { formatDateTime } from '@/lib/time'
+import type { Service, Slot, Staff } from '@/types/domain'
+
+export function Summary({
+  service,
+  staff,
+  slot,
+  timeZone,
+  currency,
+}: {
+  service: Service | null
+  staff: Staff | null
+  slot: Slot | null
+  timeZone: string
+  currency: string
+}) {
+  const { t, locale } = useLocale()
+  if (!service) return null
+
+  return (
+    <aside className="summary" aria-label={t('booking.summary')}>
+      <h3 className="summary__title">{t('booking.summary')}</h3>
+
+      <dl className="summary__list">
+        <div>
+          <dt>{t('step.service')}</dt>
+          <dd>{service.name}</dd>
+        </div>
+        {staff && (
+          <div>
+            <dt>{t('step.staff')}</dt>
+            <dd>{staff.displayName}</dd>
+          </div>
+        )}
+        {slot && (
+          <div>
+            <dt>{t('step.time')}</dt>
+            <dd>{formatDateTime(slot.start, timeZone, locale)}</dd>
+          </div>
+        )}
+        <div>
+          <dt>{t('booking.duration')}</dt>
+          <dd>{t('booking.minutes', { n: service.durationMin })}</dd>
+        </div>
+      </dl>
+
+      <p className="summary__total">
+        <span>{t('booking.total')}</span>
+        <strong>{formatMoney(service.priceCentimes, currency, locale)}</strong>
+      </p>
+    </aside>
+  )
+}
