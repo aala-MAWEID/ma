@@ -122,6 +122,9 @@ export default function IdentityPage() {
                 type="tel"
                 dir="ltr"
               />
+              <p style={{ fontSize: 12, opacity: 0.7, margin: '4px 0 0' }}>
+                {t('admin.whatsappHint')}
+              </p>
             </Field>
           </div>
 

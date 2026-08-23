@@ -40,6 +40,14 @@ export type ErrorCode =
   | 'invalid_duration'
   | 'unsupported'
   | 'auth_failed'
+  | 'invalid_price'
+  | 'invalid_hours'
+  | 'invalid_weekday'
+  | 'invalid_day'
+  | 'staff_has_bookings'
+  | 'service_has_bookings'
+  | 'bad_order'
+  | 'shop_already_claimed'
 
 export class AppError extends Error {
   readonly code: ErrorCode
@@ -100,6 +108,14 @@ const KNOWN = new Set<string>([
   'invalid_color',
   'invalid_duration',
   'auth_failed',
+  'invalid_price',
+  'invalid_hours',
+  'invalid_weekday',
+  'invalid_day',
+  'staff_has_bookings',
+  'service_has_bookings',
+  'bad_order',
+  'shop_already_claimed',
 ])
 
 /**

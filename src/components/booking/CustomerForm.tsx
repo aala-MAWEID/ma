@@ -1,6 +1,6 @@
 import { useId } from 'react'
 import { Field, Input, Textarea } from '@/components/ui'
-import { useLocale } from '@/context/LocaleContext'
+import { useLocale } from '@/contexts/LocaleContext'
 import type { CustomerDraft, CustomerErrors } from '@/lib/validation'
 
 export function CustomerForm({

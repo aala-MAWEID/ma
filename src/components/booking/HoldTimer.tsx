@@ -1,4 +1,4 @@
-import { useLocale } from '@/context/LocaleContext'
+import { useLocale } from '@/contexts/LocaleContext'
 import { formatCountdown } from '@/lib/time'
 import { cn } from '@/lib/cn'
 

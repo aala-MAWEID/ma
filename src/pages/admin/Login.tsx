@@ -1,89 +1,91 @@
-import { useState, type FormEvent } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
-import { Button, Field, Input } from '@/components/ui'
+import { useEffect, useMemo, useState } from 'react'
+import { Navigate, useNavigate, useParams } from 'react-router-dom'
+import { GoogleButton } from '@/components/shared/GoogleButton'
 import { useAuth } from '@/contexts/AuthContext'
 import { useLocale } from '@/contexts/LocaleContext'
 import { useTenantBundle } from '@/contexts/TenantContext'
-import { errorCodeOf, errorKey } from '@/data/errors'
-import { GoogleButton } from '@/components/shared/GoogleButton'
+import { useToast } from '@/contexts/ToastContext'
+import { Button, Spinner } from '@/components/ui'
+import { data } from '@/data'
+import type { AuthStatus } from '@/data/adapter'
 
 export default function Login() {
-  const { t } = useLocale()
-  const { slug } = useParams()
+  const { slug = '' } = useParams<{ slug: string }>()
   const bundle = useTenantBundle()
-  const { signIn, signInWithGoogle } = useAuth()
+  const { session, loading } = useAuth()
+  const { t } = useLocale()
+  const toast = useToast()
   const navigate = useNavigate()
 
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+  const [status, setStatus] = useState<AuthStatus | null>(null)
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
-  const submit = async (e: FormEvent) => {
-    e.preventDefault()
+  const redirectTo = useMemo(
+    () => window.location.origin + import.meta.env.BASE_URL + slug + '/admin',
+    [slug],
+  )
+
+  useEffect(() => {
+    if (!session) return
+    let alive = true
+    data
+      .authStatus(slug)
+      .then((s) => alive && setStatus(s))
+      .catch((e) => console.error('[maweid] authStatus failed', e))
+    return () => {
+      alive = false
+    }
+  }, [session, slug])
+
+  async function claim() {
     setBusy(true)
-    setError(null)
     try {
-      await signIn(email, password)
-      navigate(`/${slug ?? bundle.tenant.slug}/admin/agenda`, { replace: true })
-    } catch (err) {
-      setError(t(errorKey(errorCodeOf(err))))
+      await data.claimShop(slug)
+      toast.success(t('admin.claimed'))
+      navigate(`/${slug}/admin`, { replace: true })
+    } catch (e) {
+      toast.error(t('error.forbidden'))
+      console.error('[maweid] claimShop failed', e)
     } finally {
       setBusy(false)
     }
   }
 
-  const redirectTarget = window.location.origin + import.meta.env.BASE_URL + (slug ?? bundle.tenant.slug) + '/admin/agenda'
+  if (loading) {
+    return (
+      <div className="page-center">
+        <Spinner size={32} />
+      </div>
+    )
+  }
+
+  if (session && status?.isMember) return <Navigate to={`/${slug}/admin`} replace />
 
   return (
-    <div className="page-center">
-      <form className="signin max-w-sm w-full bg-surface border border-border rounded-2xl p-6 shadow-md" onSubmit={submit}>
-        <div className="text-center mb-6">
-          <h1 className="text-2xl font-bold">{t('admin.signInTitle')}</h1>
-          <p className="text-sm text-subtle mt-1">{bundle.tenant.name}</p>
-        </div>
+    <div className="page-center" dir="rtl">
+      <div className="auth-card">
+        <h1 className="auth-card__title">{bundle.tenant.name}</h1>
+        <p className="auth-card__subtitle">{t('admin.loginSubtitle')}</p>
 
-        {error && <div className="alert alert--err mb-4">{error}</div>}
-
-        <Field label={t('field.email')}>
-          <Input
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            type="email"
-            dir="ltr"
-            autoComplete="username"
-            placeholder="owner@zaytouna.ma"
-            required
-          />
-        </Field>
-
-        <Field label={t('field.password')}>
-          <Input
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            type="password"
-            dir="ltr"
-            autoComplete="current-password"
-            required
-          />
-        </Field>
-
-        <Button type="submit" loading={busy} variant="primary" block className="mt-4 mb-3">
-          {t('action.signIn')}
-        </Button>
-
-        <div className="relative flex items-center py-2">
-          <div className="flex-grow border-t border-border"></div>
-          <span className="flex-shrink-0 mx-4 text-subtle text-sm">أو</span>
-          <div className="flex-grow border-t border-border"></div>
-        </div>
-
-        <GoogleButton
-          label="تسجيل الدخول بحساب Google"
-          onClick={() => signInWithGoogle(redirectTarget)}
-          block
-        />
-      </form>
+        {!session ? (
+          <div style={{ display: 'grid', gap: 12, justifyItems: 'center' }}>
+            <GoogleButton redirectTo={redirectTo} block />
+            <p className="signin__hint">{t('admin.googleOnlyHint')}</p>
+          </div>
+        ) : status?.canClaim ? (
+          <div style={{ display: 'grid', gap: 12 }}>
+            <p className="auth-card__subtitle">
+              {t('admin.signedInAs')}: <strong>{status.email}</strong>
+            </p>
+            <p className="auth-card__subtitle">{t('admin.claimHint')}</p>
+            <Button variant="primary" block loading={busy} onClick={claim}>
+              {t('admin.claimShop')}
+            </Button>
+          </div>
+        ) : (
+          <div className="alert alert--err">{t('admin.notMember')}</div>
+        )}
+      </div>
     </div>
   )
 }

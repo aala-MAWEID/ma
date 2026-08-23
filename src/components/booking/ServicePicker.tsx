@@ -1,5 +1,5 @@
-import { useLocale } from '@/context/LocaleContext'
-import { useTenantBundle } from '@/context/TenantContext'
+import { useLocale } from '@/contexts/LocaleContext'
+import { useTenantBundle } from '@/contexts/TenantContext'
 import { formatMoney } from '@/lib/money'
 import { cn } from '@/lib/cn'
 import type { UUID } from '@/types/domain'

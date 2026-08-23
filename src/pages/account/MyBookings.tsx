@@ -1,10 +1,9 @@
 import { useState } from 'react'
-import { Header } from '@/components/shared/Header'
 import { Button, EmptyState, Field, Input, Spinner } from '@/components/ui'
 import { StatusPill } from '@/components/shared/StatusPill'
 import { data } from '@/data'
-import { useLocale } from '@/context/LocaleContext'
-import { useTenantBundle } from '@/context/TenantContext'
+import { useLocale } from '@/contexts/LocaleContext'
+import { useTenantBundle } from '@/contexts/TenantContext'
 import { useToast } from '@/hooks'
 import { formatDateTime } from '@/lib/time'
 import { formatMoney } from '@/lib/money'
@@ -56,64 +55,60 @@ export default function MyBookings() {
   }
 
   return (
-    <>
-      <Header />
+    <div className="wrap account">
+      <h1 className="section__title">{t('nav.myBookings')}</h1>
 
-      <main className="wrap account">
-        <h1 className="section__title">{t('nav.myBookings')}</h1>
+      <div className="account__lookup">
+        <Field label={t('field.phone')} error={error ?? undefined}>
+          <Input
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            type="tel"
+            dir="ltr"
+            inputMode="tel"
+            placeholder="06 12 80 69 32"
+            onKeyDown={(e) => e.key === 'Enter' && void lookup()}
+          />
+        </Field>
+        <Button onClick={() => void lookup()} loading={loading}>
+          {t('nav.myBookings')}
+        </Button>
+      </div>
 
-        <div className="account__lookup">
-          <Field label={t('field.phone')} error={error ?? undefined}>
-            <Input
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              type="tel"
-              dir="ltr"
-              inputMode="tel"
-              placeholder="06 12 80 69 32"
-              onKeyDown={(e) => e.key === 'Enter' && void lookup()}
-            />
-          </Field>
-          <Button onClick={() => void lookup()} loading={loading}>
-            {t('nav.myBookings')}
-          </Button>
-        </div>
+      {loading && <Spinner size={24} />}
 
-        {loading && <Spinner size={24} />}
+      {items && items.length === 0 && (
+        <EmptyState icon="🗓" title={t('common.empty')} />
+      )}
 
-        {items && items.length === 0 && (
-          <EmptyState icon="🗓" title={t('common.empty')} />
-        )}
-
-        {items && items.length > 0 && (
-          <ul className="account__list">
-            {items.map((item) => {
-              const upcoming =
-                item.startsAt.getTime() > Date.now() &&
-                (item.status === 'confirmed' || item.status === 'pending')
-              return (
-                <li key={item.id} className="account__row">
-                  <div>
-                    <strong>{formatDateTime(item.startsAt, bundle.tenant.timeZone, locale)}</strong>
-                    <span>
-                      {item.serviceName} · {t('common.with')} {item.staffName}
-                    </span>
-                  </div>
-                  <div className="account__meta">
-                    <StatusPill status={item.status} />
-                    <span>{formatMoney(item.priceCentimes, bundle.tenant.currency, locale)}</span>
-                  </div>
-                  {upcoming && bundle.settings.allowCustomerCancel && (
-                    <Button variant="quiet" size="sm" onClick={() => void cancel(item)}>
-                      {t('action.cancel')}
-                    </Button>
-                  )}
-                </li>
-              )
-            })}
-          </ul>
-        )}
-      </main>
-    </>
+      {items && items.length > 0 && (
+        <ul className="account__list">
+          {items.map((item) => {
+            const upcoming =
+              item.startsAt.getTime() > Date.now() &&
+              (item.status === 'confirmed' || item.status === 'pending')
+            return (
+              <li key={item.id} className="account__row">
+                <div>
+                  <strong>{formatDateTime(item.startsAt, bundle.tenant.timeZone, locale)}</strong>
+                  <span>
+                    {item.serviceName} · {t('common.with')} {item.staffName}
+                  </span>
+                </div>
+                <div className="account__meta">
+                  <StatusPill status={item.status} />
+                  <span>{formatMoney(item.priceCentimes, bundle.tenant.currency, locale)}</span>
+                </div>
+                {upcoming && bundle.settings.allowCustomerCancel && (
+                  <Button variant="quiet" size="sm" onClick={() => void cancel(item)}>
+                    {t('action.cancel')}
+                  </Button>
+                )}
+              </li>
+            )
+          })}
+        </ul>
+      )}
+    </div>
   )
 }

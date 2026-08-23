@@ -14,10 +14,14 @@ export interface Toast {
   tone: 'ok' | 'err' | 'error' | 'info' | 'warn'
 }
 
-interface ToastValue {
+export interface ToastValue {
   toasts: Toast[]
   push: (message: string, tone?: Toast['tone']) => void
   toast: (message: string, tone?: Toast['tone']) => void
+  success: (message: string) => void
+  error: (message: string) => void
+  info: (message: string) => void
+  warn: (message: string) => void
   dismiss: (id: number) => void
 }
 
@@ -45,6 +49,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       toasts,
       push,
       toast: push,
+      success: (msg: string) => push(msg, 'ok'),
+      error: (msg: string) => push(msg, 'err'),
+      info: (msg: string) => push(msg, 'info'),
+      warn: (msg: string) => push(msg, 'warn'),
       dismiss,
     }),
     [toasts, push, dismiss],
@@ -69,11 +77,13 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   )
 }
 
-export function useToast(): ToastValue & ((message: string, tone?: Toast['tone']) => void) {
+export type ToastHook = ToastValue & ((message: string, tone?: Toast['tone']) => void)
+
+export function useToast(): ToastHook {
   const ctx = useContext(ToastContext)
   if (!ctx) throw new Error('useToast must be used inside <ToastProvider>')
 
   const fn = (message: string, tone?: Toast['tone']) => ctx.push(message, tone)
   Object.assign(fn, ctx)
-  return fn as any
+  return fn as unknown as ToastHook
 }

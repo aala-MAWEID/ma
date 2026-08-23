@@ -1,74 +1,97 @@
-import { useLocale } from '@/context/LocaleContext'
-import { useTenant } from '@/context/TenantContext'
-import { WEEKDAY_KEYS } from '@/config/constants'
-import { minutesToClock } from '@/lib/time'
+import { Link, useParams } from 'react-router-dom'
+import { useLocale } from '@/contexts/LocaleContext'
+import { useTenantBundle } from '@/contexts/TenantContext'
+
+const WA_BASE = 'https://wa.me/'
 
 export function Footer() {
+  const bundle = useTenantBundle()
   const { t } = useLocale()
-  const { bundle } = useTenant()
-  if (!bundle) return null
-  const { tenant, workingHours } = bundle
-  const shopHours = workingHours.filter((h) => h.staffId === null)
+  const { slug = '' } = useParams<{ slug: string }>()
+  const tenant = bundle.tenant
+
+  const waDigits = String(tenant.whatsapp ?? tenant.phone ?? '').replace(/[^0-9]/g, '')
+  const waMessage = t('footer.waMessage').replace('{shop}', tenant.name ?? '')
+  const waHref = waDigits ? WA_BASE + waDigits + '?text=' + encodeURIComponent(waMessage) : null
+  const telHref = tenant.phone ? 'tel:' + String(tenant.phone).replace(/\s/g, '') : null
+  const mailHref = tenant.email ? 'mailto:' + tenant.email : null
+  const mapHref =
+    tenant.lat && tenant.lng
+      ? 'https://www.google.com/maps/search/?api=1&query=' + tenant.lat + ',' + tenant.lng
+      : tenant.address
+        ? 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(tenant.address)
+        : null
 
   return (
-    <footer className="site-foot">
-      <div className="wrap site-foot__grid">
+    <footer className="site-foot" dir="rtl">
+      <div className="site-foot__grid">
         <section>
           <h3>{tenant.name}</h3>
-          <p>{tenant.tagline}</p>
-          <p>{tenant.addressLine ?? tenant.address}</p>
-          <p>{tenant.city}</p>
+          {tenant.tagline ? <p style={{ opacity: 0.75 }}>{tenant.tagline}</p> : null}
+          {tenant.address ? (
+            mapHref ? (
+              <p>
+                <a href={mapHref} target="_blank" rel="noreferrer">
+                  {tenant.address}
+                  {tenant.city ? ` ، ${tenant.city}` : ''}
+                </a>
+              </p>
+            ) : (
+              <p>
+                {tenant.address}
+                {tenant.city ? ` ، ${tenant.city}` : ''}
+              </p>
+            )
+          ) : null}
         </section>
 
         <section>
-          <h3>{t('nav.contact')}</h3>
-          <p>
-            <a href={`tel:${tenant.phone}`}>{tenant.phone}</a>
-          </p>
-          {tenant.whatsapp && (
-            <p>
-              <a
-                href={`https://wa.me/${tenant.whatsapp}`}
-                target="_blank"
-                rel="noreferrer noopener"
-              >
-                {t('action.whatsapp')}
-              </a>
-            </p>
-          )}
-          {tenant.email && (
-            <p>
-              <a href={`mailto:${tenant.email}`}>{tenant.email}</a>
-            </p>
-          )}
+          <h3>{t('footer.contact')}</h3>
+          <ul style={{ listStyle: 'none', padding: 0, display: 'grid', gap: 6 }}>
+            {mailHref ? (
+              <li>
+                <a href={mailHref} dir="ltr">
+                  {tenant.email}
+                </a>
+              </li>
+            ) : null}
+            {telHref ? (
+              <li>
+                <a href={telHref} dir="ltr">
+                  {tenant.phone}
+                </a>
+              </li>
+            ) : null}
+            {waHref ? (
+              <li>
+                <a href={waHref} target="_blank" rel="noreferrer">
+                  {t('footer.whatsappBook')}
+                </a>
+              </li>
+            ) : null}
+          </ul>
         </section>
 
         <section>
-          <h3>{t('booking.chooseTime')}</h3>
-          <ul className="hours">
-            {WEEKDAY_KEYS.map((key, weekday) => {
-              const windows = shopHours.filter((h) => h.weekday === weekday)
-              return (
-                <li key={key}>
-                  <span>{t(`day.${key}`)}</span>
-                  <span className="hours__value">
-                    {windows.length === 0
-                      ? t('common.closedNow')
-                      : windows
-                          .map((w) => `${minutesToClock(w.opensMin)}–${minutesToClock(w.closesMin)}`)
-                          .join(' · ')}
-                  </span>
-                </li>
-              )
-            })}
+          <h3>{t('footer.quickLinks')}</h3>
+          <ul style={{ listStyle: 'none', padding: 0, display: 'grid', gap: 6 }}>
+            <li>
+              <Link to={`/${slug}/book`}>{t('nav.book')}</Link>
+            </li>
+            <li>
+              <Link to={`/${slug}/queue`}>{t('nav.queue')}</Link>
+            </li>
+            <li>
+              <Link to={`/${slug}/me`}>{t('nav.myBookings')}</Link>
+            </li>
           </ul>
         </section>
       </div>
 
-      <div className="wrap site-foot__bar">
-        <small>
+      <div className="site-foot__bar">
+        <span>
           © {new Date().getFullYear()} {tenant.name}
-        </small>
+        </span>
       </div>
     </footer>
   )

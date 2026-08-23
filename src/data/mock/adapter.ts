@@ -16,12 +16,16 @@ import type {
   AvailabilityQuery,
   ConfirmInput,
   DataAdapter,
+  DayScheduleRow,
   Decision,
   HoldResult,
+  MyBookingRow,
   Stats,
   TenantBundle,
   AuthStatus,
   WeekHours,
+  WorkingHour,
+  ClosedDate,
 } from '@/data/adapter'
 import { AppError } from '@/data/errors'
 import type {
@@ -208,7 +212,6 @@ function assertBookable(
   const bufferAfterMin = service.bufferAfterMin
 
   const day = dayKeyOf(startsAt, tz)
-  const now = new Date()
   const today = todayKey(tz)
 
   // closed date
@@ -217,7 +220,6 @@ function assertBookable(
   }
 
   // advance days
-  const [y, m, dNum] = today.split('-').map(Number)
   const maxAdvance = (db.settings.maxAdvanceDays ?? 30) * 86_400_000
   if (startsAt.getTime() > Date.now() + maxAdvance) {
     throw new AppError('too_far')
@@ -298,9 +300,9 @@ export const mockAdapter: DataAdapter = {
       typeof queryOrSlug === 'object'
         ? {
             slug: queryOrSlug.slug,
-            serviceId: queryOrSlug.serviceId,
+            serviceId: queryOrSlug.serviceId!,
             staffId: queryOrSlug.staffId ?? null,
-            from: queryOrSlug.from ?? queryOrSlug.fromDay ?? '1970-01-01',
+            from: queryOrSlug.day ?? queryOrSlug.from ?? '1970-01-01',
             days: queryOrSlug.days ?? 14,
           }
         : {
@@ -335,23 +337,18 @@ export const mockAdapter: DataAdapter = {
     return delay<Slot[]>(slots)
   },
 
-  async getOpenDays(queryOrSlug, serviceId, staffId, fromDay, days) {
-    const slots = await this.getAvailability(queryOrSlug, serviceId, staffId, fromDay, days)
-    const tz = store.read().tenant.timeZone
-    const openSet = new Set<string>()
-    for (const s of slots) {
-      openSet.add(dayKeyOf(s.start, tz))
-    }
-    return delay<string[]>(Array.from(openSet))
-  },
-
   // ---- booking flow -------------------------------------------------------
-  async holdSlot(slug, serviceId, staffId, startsAt) {
+  async holdSlot(slugOrInput, serviceId, staffId, startsAt): Promise<HoldResult> {
     sweep()
     const db = store.read()
-    if (db.tenant.slug !== slug) throw new AppError('tenant_not_found')
+    const slug = typeof slugOrInput === 'string' ? slugOrInput : slugOrInput.tenantId
+    const sId = typeof slugOrInput === 'string' ? serviceId! : slugOrInput.serviceId
+    const stId = typeof slugOrInput === 'string' ? staffId! : slugOrInput.staffId
+    const starts = typeof slugOrInput === 'string' ? startsAt! : slugOrInput.startsAt
 
-    const g = assertBookable(serviceId, staffId, startsAt, false)
+    if (db.tenant.slug !== slug && db.tenant.id !== slug) throw new AppError('tenant_not_found')
+
+    const g = assertBookable(sId, stId, starts, false)
     const id = uid('b')
     const code = bookingCode()
     const expiresAt = new Date(Date.now() + (db.settings.holdTtlMin ?? 10) * 60_000)
@@ -359,10 +356,10 @@ export const mockAdapter: DataAdapter = {
     const booking: Booking = {
       id,
       tenantId: db.tenant.id,
-      staffId,
-      serviceId,
-      startsAt,
-      endsAt: addMinutes(startsAt, g.durationMin),
+      staffId: stId,
+      serviceId: sId,
+      startsAt: starts,
+      endsAt: addMinutes(starts, g.durationMin),
       bufferBeforeMin: g.bufferBeforeMin,
       bufferAfterMin: g.bufferAfterMin,
       status: 'held',
@@ -379,7 +376,7 @@ export const mockAdapter: DataAdapter = {
       d.bookings.push(booking)
     })
 
-    return delay<HoldResult & Booking>({
+    return delay<HoldResult>({
       ...booking,
       bookingId: id,
       code,
@@ -389,13 +386,20 @@ export const mockAdapter: DataAdapter = {
     })
   },
 
-  async releaseHold(bookingId, _code) {
+  async releaseHold(bookingId: string, _code?: string): Promise<void> {
     store.write((d) => {
       d.bookings = d.bookings.filter((b) => !(b.id === bookingId && b.status === 'held'))
     })
   },
 
-  async confirmHold(inputOrBookingId, code, fullName, phone, email, notes) {
+  async confirmBooking(
+    inputOrBookingId: ConfirmInput | string,
+    code?: string,
+    fullName?: string,
+    phone?: string,
+    email?: string,
+    notes?: string,
+  ): Promise<AgendaItem> {
     const input: ConfirmInput =
       typeof inputOrBookingId === 'object'
         ? inputOrBookingId
@@ -408,6 +412,11 @@ export const mockAdapter: DataAdapter = {
             notes,
           }
 
+    const b = await this.confirmHold(input)
+    return delay(hydrate(b))
+  },
+
+  async confirmHold(input: ConfirmInput): Promise<Booking> {
     const db = store.read()
     const booking = db.bookings.find((b) => b.id === input.bookingId)
     if (!booking || booking.code !== input.code) throw new AppError('booking_not_found')
@@ -471,13 +480,13 @@ export const mockAdapter: DataAdapter = {
   },
 
   // ---- customer -----------------------------------------------------------
-  async getBookingByCode(code) {
+  async getBookingByCode(code: string): Promise<AgendaItem> {
     const b = store.read().bookings.find((x) => x.code === code.trim().toUpperCase())
-    if (!b) return delay(null)
+    if (!b) throw new AppError('booking_not_found')
     return delay(hydrate(b))
   },
 
-  async listBookingsByPhone(_slug, phone) {
+  async listBookingsByPhone(_slug: string, phone: string): Promise<AgendaItem[]> {
     const normalized = normalizePhone(phone)
     if (!normalized) throw new AppError('invalid_phone')
     const db = store.read()
@@ -490,9 +499,14 @@ export const mockAdapter: DataAdapter = {
     return delay(list)
   },
 
-  async cancelBooking(codeOrId, reason = null) {
+  async cancelBooking(id: string, code?: string, reason?: string): Promise<void> {
+    const target = code ?? id
+    await this.cancelByCode(target, reason)
+  },
+
+  async cancelByCode(code: string, reason?: string): Promise<void> {
     const db = store.read()
-    const b = db.bookings.find((x) => x.code === codeOrId || x.id === codeOrId)
+    const b = db.bookings.find((x) => x.code === code || x.id === code)
     if (!b) throw new AppError('booking_not_found')
 
     const isMember = db.session?.tenantId === b.tenantId
@@ -513,12 +527,52 @@ export const mockAdapter: DataAdapter = {
       t.updatedAt = new Date()
     })
     logEvent(b.id, 'status', { fromStatus: b.status, toStatus: 'cancelled', note: reason ?? undefined })
-    return delay(store.read().bookings.find((x) => x.id === b.id)!)
   },
 
-  async rescheduleBooking(codeOrId, startsAt, staffId, _code) {
+  async cancelBookingAdmin(bookingId: string, reason?: string | null): Promise<void> {
     const db = store.read()
-    const b = db.bookings.find((x) => x.code === codeOrId || x.id === codeOrId)
+    const b = db.bookings.find((x) => x.id === bookingId)
+    if (!b) throw new AppError('booking_not_found')
+    store.write((d) => {
+      const t = d.bookings.find((x) => x.id === bookingId)!
+      t.status = 'cancelled'
+      t.cancelReason = reason ?? undefined
+      t.updatedAt = new Date()
+    })
+  },
+
+  async deleteBooking(bookingId: string, _reason?: string | null): Promise<void> {
+    store.write((d) => {
+      d.bookings = d.bookings.filter((b) => b.id !== bookingId)
+    })
+  },
+
+  async adminCancelBooking(tenantId: string, id: string, reason?: string): Promise<void> {
+    await this.cancelBookingAdmin(id, reason ?? null)
+  },
+
+  async adminDeleteBooking(_tenantId: string, id: string): Promise<void> {
+    await this.deleteBooking(id)
+  },
+
+  async rescheduleBooking(
+    codeOrInput:
+      | string
+      | {
+          code: string
+          newStartsAt: Date
+          newStaffId?: string
+        },
+    startsAt?: Date,
+    staffId?: string,
+    _oldCode?: string,
+  ): Promise<AgendaItem | Booking> {
+    const code = typeof codeOrInput === 'string' ? codeOrInput : codeOrInput.code
+    const nextStartsAt = typeof codeOrInput === 'string' ? startsAt! : codeOrInput.newStartsAt
+    const nextStaffId = typeof codeOrInput === 'string' ? staffId : codeOrInput.newStaffId
+
+    const db = store.read()
+    const b = db.bookings.find((x) => x.code === code || x.id === code)
     if (!b) throw new AppError('booking_not_found')
 
     const isMember = db.session?.tenantId === b.tenantId
@@ -530,8 +584,8 @@ export const mockAdapter: DataAdapter = {
       }
     }
 
-    const nextStaff = staffId ?? b.staffId
-    const g = assertBookable(b.serviceId, nextStaff, startsAt, isMember, b.id)
+    const resolvedStaff = nextStaffId ?? b.staffId
+    const g = assertBookable(b.serviceId, resolvedStaff, nextStartsAt, isMember, b.id)
 
     const newId = uid('b')
     const newCode = bookingCode()
@@ -544,9 +598,9 @@ export const mockAdapter: DataAdapter = {
         ...old,
         id: newId,
         code: newCode,
-        staffId: nextStaff,
-        startsAt,
-        endsAt: addMinutes(startsAt, g.durationMin),
+        staffId: resolvedStaff,
+        startsAt: nextStartsAt,
+        endsAt: addMinutes(nextStartsAt, g.durationMin),
         status: b.status,
         cancelReason: undefined,
         rescheduleOf: b.id,
@@ -554,12 +608,12 @@ export const mockAdapter: DataAdapter = {
         updatedAt: new Date(),
       })
     })
-    logEvent(newId, 'moved', { fromStartsAt: b.startsAt, toStartsAt: startsAt })
-    return delay(store.read().bookings.find((x) => x.id === newId)!)
+    logEvent(newId, 'moved', { fromStartsAt: b.startsAt, toStartsAt: nextStartsAt })
+    return delay(hydrate(store.read().bookings.find((x) => x.id === newId)!))
   },
 
   // ---- owner / admin ------------------------------------------------------
-  async getAgenda(tenantId, from, to) {
+  async getAgenda(tenantId: string, from: Date, to: Date): Promise<AgendaItem[]> {
     sweep()
     const list = store
       .read()
@@ -575,7 +629,7 @@ export const mockAdapter: DataAdapter = {
     return delay(list)
   },
 
-  async listRequests(tenantId) {
+  async listRequests(tenantId: string): Promise<AgendaItem[]> {
     const list = store
       .read()
       .bookings.filter((b) => b.tenantId === tenantId && b.status === 'pending')
@@ -584,22 +638,25 @@ export const mockAdapter: DataAdapter = {
     return delay(list)
   },
 
-  async decide(bookingId, decision: Decision, reason = null) {
+  async decide(bookingId: string, decision: Decision, reason?: string): Promise<AgendaItem> {
     const db = store.read()
     const b = db.bookings.find((x) => x.id === bookingId)
     if (!b) throw new AppError('booking_not_found')
     if (db.session?.tenantId !== b.tenantId) throw new AppError('forbidden')
 
     const next: Booking['status'] =
-      decision === 'confirm' ? 'confirmed'
-      : decision === 'decline' ? 'declined'
-      : decision === 'complete' ? 'completed'
-      : 'no_show'
+      decision === 'confirm' || decision === 'approve'
+        ? 'confirmed'
+        : decision === 'decline' || decision === 'reject'
+        ? 'declined'
+        : decision === 'complete'
+        ? 'completed'
+        : 'no_show'
 
     store.write((d) => {
       const t = d.bookings.find((x) => x.id === bookingId)!
       t.status = next
-      if (decision === 'decline') t.cancelReason = reason ?? undefined
+      if (decision === 'decline' || decision === 'reject') t.cancelReason = reason ?? undefined
       t.updatedAt = new Date()
 
       if (next === 'no_show' && t.customerId) {
@@ -615,17 +672,27 @@ export const mockAdapter: DataAdapter = {
       }
     })
     logEvent(bookingId, 'status', { fromStatus: b.status, toStatus: next, note: reason ?? undefined })
-    return delay(store.read().bookings.find((x) => x.id === bookingId)!)
+    return delay(hydrate(store.read().bookings.find((x) => x.id === bookingId)!))
   },
 
-  async moveBooking(bookingId, startsAt, staffId) {
+  async moveBooking(
+    tenantIdOrBookingId: string,
+    idOrStartsAt: string | Date,
+    startsAtOrStaffId?: Date | string,
+    staffId?: string,
+  ): Promise<AgendaItem> {
+    const bookingId = typeof idOrStartsAt === 'string' ? idOrStartsAt : tenantIdOrBookingId
+    const startsAt =
+      typeof idOrStartsAt === 'string' ? (startsAtOrStaffId as Date) : (idOrStartsAt as Date)
+    const targetStaff = typeof startsAtOrStaffId === 'string' ? startsAtOrStaffId : staffId
+
     const db = store.read()
     const b = db.bookings.find((x) => x.id === bookingId)
     if (!b) throw new AppError('booking_not_found')
     if (db.session?.tenantId !== b.tenantId) throw new AppError('forbidden')
     if (!MOVABLE_STATUSES.includes(b.status)) throw new AppError('not_movable')
 
-    const nextStaff = staffId ?? b.staffId
+    const nextStaff = targetStaff ?? b.staffId
     const g = assertBookable(b.serviceId, nextStaff, startsAt, true, b.id)
 
     store.write((d) => {
@@ -639,7 +706,7 @@ export const mockAdapter: DataAdapter = {
     return delay(hydrate(store.read().bookings.find((x) => x.id === bookingId)!))
   },
 
-  async createAdminBooking(input: AdminBookingInput) {
+  async createAdminBooking(input: AdminBookingInput): Promise<AgendaItem> {
     const db = store.read()
     if (db.session?.tenantId !== input.tenantId) throw new AppError('forbidden')
 
@@ -686,10 +753,31 @@ export const mockAdapter: DataAdapter = {
       })
     })
     logEvent(id, 'created', { toStatus: 'confirmed' })
-    return delay(store.read().bookings.find((x) => x.id === id)!)
+    return delay(hydrate(store.read().bookings.find((x) => x.id === id)!))
   },
 
-  async listCustomers(tenantId) {
+  async updateBookingStatus(
+    _tenantId: string,
+    id: string,
+    status: string,
+    reason?: string,
+  ): Promise<AgendaItem> {
+    store.write((d) => {
+      const b = d.bookings.find((x) => x.id === id)
+      if (b) {
+        b.status = status as Booking['status']
+        if (reason) b.cancelReason = reason
+        b.updatedAt = new Date()
+      }
+    })
+    return delay(hydrate(store.read().bookings.find((x) => x.id === id)!))
+  },
+
+  async getCustomers(tenantId: string, _search?: string): Promise<Customer[]> {
+    return this.listCustomers(tenantId)
+  },
+
+  async listCustomers(tenantId: string): Promise<Customer[]> {
     const list = store
       .read()
       .customers.filter((c) => c.tenantId === tenantId)
@@ -697,11 +785,7 @@ export const mockAdapter: DataAdapter = {
     return delay(list)
   },
 
-  async listTimeOff(tenantId) {
-    return delay(store.read().timeOff.filter((t) => t.tenantId === tenantId))
-  },
-
-  async getStats(tenantId) {
+  async getStats(tenantId: string): Promise<Stats> {
     const db = store.read()
     const tz = db.tenant.timeZone
     const today = todayKey(tz)
@@ -720,7 +804,11 @@ export const mockAdapter: DataAdapter = {
         (b) => dayKeyOf(b.startsAt, tz) === today && b.status !== 'cancelled',
       ).length,
       pendingCount: mine.filter((b) => b.status === 'pending').length,
-      queueCount: mine.filter((b) => ['pending', 'confirmed', 'serving'].includes(b.status) && (b.mode === 'queue' || b.source === 'walk_in')).length,
+      queueCount: mine.filter(
+        (b) =>
+          ['pending', 'confirmed', 'serving'].includes(b.status) &&
+          (b.mode === 'queue' || b.source === 'walk_in'),
+      ).length,
       weekCount: week.length,
       weekRevenueCentimes: week.reduce((sum, b) => sum + b.priceCentimes, 0),
       noShowRate: closed.length
@@ -729,7 +817,14 @@ export const mockAdapter: DataAdapter = {
     })
   },
 
-  async updateSettings(tenantId, patch) {
+  async updateTenantSettings(
+    tenantId: string,
+    patch: Partial<TenantSettings>,
+  ): Promise<TenantSettings> {
+    return this.updateSettings(tenantId, patch)
+  },
+
+  async updateSettings(tenantId: string, patch: Partial<TenantSettings>): Promise<TenantSettings> {
     let updated: TenantSettings | null = null
     store.write((d) => {
       if (d.tenant.id === tenantId) {
@@ -741,60 +836,21 @@ export const mockAdapter: DataAdapter = {
     return delay(updated)
   },
 
-  // ---- destructive --------------------------------------------------------
-  async cancelBookingAdmin(bookingId, reason) {
-    let updated: Booking | null = null
-    store.write((d) => {
-      const b = d.bookings.find((x) => x.id === bookingId)
-      if (!b) return
-      b.status = 'cancelled'
-      b.cancelReason = reason ?? undefined
-      b.updatedAt = new Date()
-      updated = b
-      d.events.push({
-        id: uid('ev'),
-        bookingId,
-        actorLabel: 'admin',
-        kind: 'status',
-        toStatus: 'cancelled',
-        note: reason ?? undefined,
-        createdAt: new Date(),
-      })
-    })
-    if (!updated) throw new AppError('booking_not_found')
-    return delay(updated)
-  },
-
-  async deleteBooking(bookingId, reason) {
-    let found = false
-    store.write((d) => {
-      const idx = d.bookings.findIndex((x) => x.id === bookingId)
-      if (idx !== -1) {
-        d.bookings.splice(idx, 1)
-        found = true
-        d.events.push({
-          id: uid('ev'),
-          bookingId,
-          actorLabel: 'admin',
-          kind: 'deleted',
-          note: reason ?? undefined,
-          createdAt: new Date(),
-        })
-      }
-    })
-    if (!found) throw new AppError('booking_not_found')
-    return delay(undefined)
-  },
-
   // ---- queue --------------------------------------------------------------
-  async getQueue(tenantId) {
+  async getQueue(tenantId: string, _day?: string): Promise<QueueTicket[]> {
     const s = store.read()
     const staffMap = new Map(s.staff.map((st) => [st.id, st]))
     const srvMap = new Map(s.services.map((sv) => [sv.id, sv]))
     const custMap = new Map(s.customers.map((c) => [c.id, c]))
 
     const queueBookings = s.bookings
-      .filter((b) => b.tenantId === tenantId && (b.mode === 'queue' || b.source === 'walk_in' || ['pending', 'confirmed', 'serving'].includes(b.status)))
+      .filter(
+        (b) =>
+          b.tenantId === tenantId &&
+          (b.mode === 'queue' ||
+            b.source === 'walk_in' ||
+            ['pending', 'confirmed', 'serving'].includes(b.status)),
+      )
       .sort((a, b) => {
         if (a.status === 'serving' && b.status !== 'serving') return -1
         if (b.status === 'serving' && a.status !== 'serving') return 1
@@ -829,9 +885,35 @@ export const mockAdapter: DataAdapter = {
     return delay(tickets)
   },
 
-  async queueJoin(slug, serviceId, staffId, fullName, phone, notes = null) {
+  async joinQueue(input: {
+    tenantId: string
+    serviceId: string
+    staffId?: string | null
+    fullName: string
+    phone: string
+    email?: string
+  }): Promise<QueueTicket> {
+    const booking = await this.queueJoin(
+      input.tenantId,
+      input.serviceId,
+      input.staffId ?? null,
+      input.fullName,
+      input.phone,
+    )
+    const list = await this.getQueue(input.tenantId)
+    return list.find((t) => t.id === booking.id) ?? list[0]!
+  },
+
+  async queueJoin(
+    slug: string,
+    serviceId: string,
+    staffId: string | null,
+    fullName: string,
+    phone: string,
+    notes: string | null = null,
+  ): Promise<Booking> {
     const s = store.read()
-    if (s.tenant.slug !== slug) throw new AppError('tenant_not_found')
+    if (s.tenant.slug !== slug && s.tenant.id !== slug) throw new AppError('tenant_not_found')
     const srv = s.services.find((x) => x.id === serviceId)
     if (!srv) throw new AppError('service_not_found')
 
@@ -851,13 +933,14 @@ export const mockAdapter: DataAdapter = {
       store.write((d) => d.customers.push(customer!))
     }
 
+    const resolvedStaffId = staffId ?? s.staff.find((st) => st.isActive)?.id ?? 'st-1'
     const now = new Date()
     const maxRank = s.bookings.reduce((max, b) => Math.max(max, b.queueRank ?? 0), 0)
     const booking: Booking = {
       id: uid('b'),
       tenantId: s.tenant.id,
       customerId: customer.id,
-      staffId,
+      staffId: resolvedStaffId,
       serviceId,
       startsAt: now,
       endsAt: addMinutes(now, srv.durationMin),
@@ -889,19 +972,20 @@ export const mockAdapter: DataAdapter = {
     return delay(booking)
   },
 
-  async queueNext(tenantId, staffId, closeAs = 'completed') {
-    let finishedId: string | null = null
+  async queueNext(tenantId: string, staffId?: string | null, closeAs: 'completed' | 'no_show' = 'completed') {
     let nextId: string | null = null
     let nextName: string | null = null
 
     store.write((d) => {
       const serving = d.bookings.find(
-        (b) => b.tenantId === tenantId && b.status === 'serving' && (!staffId || b.staffId === staffId),
+        (b) =>
+          b.tenantId === tenantId &&
+          b.status === 'serving' &&
+          (!staffId || b.staffId === staffId),
       )
       if (serving) {
         serving.status = closeAs
         serving.updatedAt = new Date()
-        finishedId = serving.id
       }
 
       const next = d.bookings
@@ -923,43 +1007,41 @@ export const mockAdapter: DataAdapter = {
       }
     })
 
-    return delay({ finishedId, nextId, nextName })
+    return delay({ nextId, nextName })
   },
 
-  async queueAdvance(bookingId, places) {
-    let updated: Booking | null = null
+  async queueAdvance(bookingId: string, places?: number): Promise<void> {
     store.write((d) => {
       const b = d.bookings.find((x) => x.id === bookingId)
       if (!b) return
       if (places == null) {
-        const minRank = d.bookings.reduce((min, cur) => Math.min(min, cur.queueRank ?? 1000), 1000)
+        const minRank = d.bookings.reduce(
+          (min, cur) => Math.min(min, cur.queueRank ?? 1000),
+          1000,
+        )
         b.queueRank = minRank - 1000
       } else {
         b.queueRank = (b.queueRank ?? 1000) - places * 1000
       }
       b.updatedAt = new Date()
-      updated = b
     })
-    if (!updated) throw new AppError('booking_not_found')
-    return delay(updated)
   },
 
-  async queueSkip(bookingId, places = 1) {
-    let updated: Booking | null = null
+  async queueSkip(bookingId: string, places: number = 1): Promise<void> {
     store.write((d) => {
       const b = d.bookings.find((x) => x.id === bookingId)
       if (!b) return
       b.queueRank = (b.queueRank ?? 1000) + places * 1000
       b.skippedCount = (b.skippedCount ?? 0) + places
       b.updatedAt = new Date()
-      updated = b
     })
-    if (!updated) throw new AppError('booking_not_found')
-    return delay(updated)
   },
 
-  async queueReorder(bookingId, beforeId, afterId) {
-    let updated: Booking | null = null
+  async queueMove(
+    bookingId: string,
+    beforeId?: string | null,
+    afterId?: string | null,
+  ): Promise<void> {
     store.write((d) => {
       const b = d.bookings.find((x) => x.id === bookingId)
       if (!b) return
@@ -976,28 +1058,21 @@ export const mockAdapter: DataAdapter = {
         b.queueRank = 1000
       }
       b.updatedAt = new Date()
-      updated = b
     })
-    if (!updated) throw new AppError('booking_not_found')
-    return delay(updated)
   },
 
-  async queueCall(bookingId) {
-    let updated: Booking | null = null
+  async queueCall(bookingId: string): Promise<void> {
     store.write((d) => {
       const b = d.bookings.find((x) => x.id === bookingId)
       if (!b) return
       b.status = 'serving'
       b.servedAt = new Date()
       b.updatedAt = new Date()
-      updated = b
     })
-    if (!updated) throw new AppError('booking_not_found')
-    return delay(updated)
   },
 
   // ---- identity -----------------------------------------------------------
-  async updateTenantIdentity(tenantId, patch) {
+  async updateTenantIdentity(tenantId: string, patch: Record<string, unknown>): Promise<void> {
     store.write((d) => {
       if (d.tenant.id === tenantId) {
         Object.assign(d.tenant, patch)
@@ -1006,28 +1081,28 @@ export const mockAdapter: DataAdapter = {
     return delay(undefined)
   },
 
-  async upsertStaff(tenantId, input) {
+  async upsertStaff(tenantId: string, input: Record<string, unknown>): Promise<Staff> {
     let result: Staff | null = null
     store.write((d) => {
       if (input.staffId) {
         const s = d.staff.find((x) => x.id === input.staffId)
         if (s) {
-          if (input.displayName != null) s.displayName = input.displayName
-          if (input.title != null) s.title = input.title
-          if (input.color != null) s.color = input.color
-          if (input.isActive != null) s.isActive = input.isActive
-          if (input.sortOrder != null) s.sortOrder = input.sortOrder
+          if (input.displayName != null) s.displayName = String(input.displayName)
+          if (input.title != null) s.title = String(input.title)
+          if (input.color != null) s.color = String(input.color)
+          if (input.isActive != null) s.isActive = Boolean(input.isActive)
+          if (input.sortOrder != null) s.sortOrder = Number(input.sortOrder)
           result = s
         }
       } else {
         const s: Staff = {
           id: uid('st'),
           tenantId,
-          displayName: input.displayName ?? 'عامل جديد',
-          title: input.title ?? undefined,
-          color: input.color ?? '#0E7C86',
-          isActive: input.isActive ?? true,
-          sortOrder: input.sortOrder ?? d.staff.length + 1,
+          displayName: String(input.displayName ?? 'عامل جديد'),
+          title: input.title ? String(input.title) : undefined,
+          color: input.color ? String(input.color) : '#0E7C86',
+          isActive: input.isActive != null ? Boolean(input.isActive) : true,
+          sortOrder: input.sortOrder != null ? Number(input.sortOrder) : d.staff.length + 1,
         }
         d.staff.push(s)
         result = s
@@ -1037,7 +1112,7 @@ export const mockAdapter: DataAdapter = {
     return delay(result)
   },
 
-  async upsertService(tenantId, input) {
+  async upsertService(tenantId: string, input: Record<string, unknown>): Promise<Service> {
     let result: Service | null = null
     store.write((d) => {
       if (input.serviceId) {
@@ -1050,18 +1125,18 @@ export const mockAdapter: DataAdapter = {
         const s: Service = {
           id: uid('sv'),
           tenantId,
-          name: input.name ?? 'خدمة جديدة',
-          nameFr: (input as any).nameFr ?? undefined,
-          description: input.description ?? undefined,
-          category: input.category ?? 'general',
-          durationMin: input.durationMin ?? 30,
-          bufferBeforeMin: input.bufferBeforeMin ?? 0,
-          bufferAfterMin: input.bufferAfterMin ?? 0,
-          priceCentimes: input.priceCentimes ?? 5000,
-          requiresApproval: input.requiresApproval ?? false,
-          color: input.color ?? undefined,
-          isActive: input.isActive ?? true,
-          sortOrder: input.sortOrder ?? d.services.length + 1,
+          name: String(input.name ?? 'خدمة جديدة'),
+          nameFr: input.nameFr ? String(input.nameFr) : undefined,
+          description: input.description ? String(input.description) : undefined,
+          category: input.category ? String(input.category) : 'general',
+          durationMin: input.durationMin != null ? Number(input.durationMin) : 30,
+          bufferBeforeMin: input.bufferBeforeMin != null ? Number(input.bufferBeforeMin) : 0,
+          bufferAfterMin: input.bufferAfterMin != null ? Number(input.bufferAfterMin) : 0,
+          priceCentimes: input.priceCentimes != null ? Number(input.priceCentimes) : 5000,
+          requiresApproval: Boolean(input.requiresApproval),
+          color: input.color ? String(input.color) : undefined,
+          isActive: input.isActive != null ? Boolean(input.isActive) : true,
+          sortOrder: input.sortOrder != null ? Number(input.sortOrder) : d.services.length + 1,
         }
         d.services.push(s)
         result = s
@@ -1071,34 +1146,34 @@ export const mockAdapter: DataAdapter = {
     return delay(result)
   },
 
-  async updateMyProfile(patch) {
+  async updateMyProfile(patch: Record<string, unknown>): Promise<void> {
     store.write((d) => {
       if (d.session) {
-        if (patch.displayName) d.session.displayName = patch.displayName
+        if (patch.displayName) d.session.displayName = String(patch.displayName)
       }
     })
     return delay(undefined)
   },
 
   // ---- live ---------------------------------------------------------------
-  subscribeBookings(_tenantId, onChange) {
+  subscribeBookings(_tenantId: string, onChange: () => void): () => void {
     return store.subscribe(onChange)
   },
 
-  async signInWithGoogle() {
+  async signInWithGoogle(): Promise<void> {
     throw new Error('Mock backend does not support Google sign in.')
   },
-  
-  async authStatus(slug: string) {
+
+  async authStatus(slug: string): Promise<AuthStatus> {
     const s = store.read().session
     return delay({
       authenticated: !!s,
-      userId: s?.userId,
-      email: s?.email,
-      displayName: s?.displayName,
-      tenantId: s?.tenantId,
-      tenantSlug: s?.tenantSlug,
-      tenantName: s?.tenantName,
+      userId: s?.userId ?? undefined,
+      email: s?.email ?? undefined,
+      displayName: s?.displayName ?? null,
+      tenantId: s?.tenantId ?? null,
+      tenantSlug: s?.tenantSlug ?? null,
+      tenantName: s?.tenantName ?? null,
       tenantFound: true,
       tenantHasOwner: true,
       isMember: s?.tenantSlug === slug,
@@ -1107,41 +1182,58 @@ export const mockAdapter: DataAdapter = {
     })
   },
 
-  async claimShop(slug: string) {
+  async claimShop(_slug: string): Promise<{ tenantId: string; role: string }> {
     throw new Error('Not supported in mock.')
   },
 
-  async listAllStaff(tenantId: string) {
+  async listAllStaff(tenantId: string): Promise<Staff[]> {
     return delay(store.read().staff.filter((s) => s.tenantId === tenantId))
   },
 
-  async listAllServices(tenantId: string) {
+  async listAllServices(tenantId: string): Promise<Service[]> {
     return delay(store.read().services.filter((s) => s.tenantId === tenantId))
   },
 
-  async deleteStaff(tenantId: string, staffId: string) {
+  async deleteStaff(tenantId: string, staffId: string): Promise<void> {
     store.write((d) => {
       d.staff = d.staff.filter((s) => s.id !== staffId)
     })
-    return delay(undefined)
   },
 
-  async deleteService(tenantId: string, serviceId: string) {
+  async deleteService(tenantId: string, serviceId: string): Promise<void> {
     store.write((d) => {
       d.services = d.services.filter((s) => s.id !== serviceId)
     })
-    return delay(undefined)
   },
 
-  async setWeekHours(tenantId: string, staffId: string | null, week: WeekHours) {
-    throw new Error('Not implemented in mock')
+  async reorderStaff(): Promise<unknown[]> {
+    return []
+  },
+  async reorderServices(): Promise<unknown[]> {
+    return []
+  },
+  async setStaffServices(): Promise<unknown[]> {
+    return []
+  },
+  async getDaySchedule(): Promise<DayScheduleRow[]> {
+    return []
+  },
+  async myBookings(): Promise<MyBookingRow[]> {
+    return []
+  },
+  async cancelMyBooking(): Promise<void> {
+    return
   },
 
-  async listClosedDates(tenantId: string) {
+  async setWeekHours(_tenantId: string, _staffId: string | null, _week: WeekHours): Promise<WorkingHour[]> {
+    return []
+  },
+
+  async listClosedDates(tenantId: string): Promise<ClosedDate[]> {
     return delay(store.read().closedDates.filter((c) => c.tenantId === tenantId))
   },
 
-  async upsertClosedDate(tenantId: string, day: string, label?: string | null) {
+  async upsertClosedDate(tenantId: string, day: string, label?: string | null): Promise<unknown> {
     store.write((d) => {
       const idx = d.closedDates.findIndex((c) => c.day === day && c.tenantId === tenantId)
       if (idx !== -1) {
@@ -1153,7 +1245,7 @@ export const mockAdapter: DataAdapter = {
     return delay(undefined)
   },
 
-  async deleteClosedDate(tenantId: string, day: string) {
+  async deleteClosedDate(tenantId: string, day: string): Promise<unknown> {
     store.write((d) => {
       d.closedDates = d.closedDates.filter((c) => !(c.day === day && c.tenantId === tenantId))
     })
@@ -1161,11 +1253,11 @@ export const mockAdapter: DataAdapter = {
   },
 
   // ---- auth ---------------------------------------------------------------
-  async getSession() {
+  async getSession(): Promise<Session | null> {
     return delay(store.read().session)
   },
 
-  async signIn(email, password) {
+  async signIn(email, password): Promise<Session> {
     const norm = email.trim().toLowerCase()
     const isOwnerMatch =
       norm === 'noureddinelmobaraki@gmail.com' ||
@@ -1180,7 +1272,10 @@ export const mockAdapter: DataAdapter = {
     const session: Session = {
       userId: 'u-owner',
       email: norm,
-      displayName: norm === 'noureddinelmobaraki@gmail.com' ? 'Noureddine El Mobaraki' : DEMO_OWNER.displayName,
+      displayName:
+        norm === 'noureddinelmobaraki@gmail.com'
+          ? 'Noureddine El Mobaraki'
+          : DEMO_OWNER.displayName,
       tenantId: store.read().tenant.id,
       tenantSlug: store.read().tenant.slug,
       tenantName: store.read().tenant.name,
@@ -1204,13 +1299,13 @@ export const mockAdapter: DataAdapter = {
     return delay(session)
   },
 
-  async signOut() {
+  async signOut(): Promise<void> {
     store.write((d) => {
       d.session = null
     })
   },
 
-  onAuthChange(cb) {
+  onAuthChange(cb: (s: Session | null) => void): () => void {
     return store.subscribe(() => {
       cb(store.read().session)
     })

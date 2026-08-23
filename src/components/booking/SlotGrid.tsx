@@ -1,4 +1,4 @@
-import { useLocale } from '@/context/LocaleContext'
+import { useLocale } from '@/contexts/LocaleContext'
 import { Spinner, EmptyState } from '@/components/ui'
 import { formatTime } from '@/lib/time'
 import { cn } from '@/lib/cn'

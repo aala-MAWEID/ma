@@ -1,4 +1,4 @@
-import { useLocale } from '@/context/LocaleContext'
+import { useLocale } from '@/contexts/LocaleContext'
 import { formatMoney } from '@/lib/money'
 import { formatDateTime } from '@/lib/time'
 import type { Service, Slot, Staff } from '@/types/domain'

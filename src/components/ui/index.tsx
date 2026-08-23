@@ -12,7 +12,7 @@ import {
 import { createPortal } from 'react-dom'
 import { cn } from '@/lib/cn'
 import { useEscape, useToast, ToastContext, useToastState } from '@/hooks'
-import { useLocale } from '@/context/LocaleContext'
+import { useLocale } from '@/contexts/LocaleContext'
 
 /* -------------------------------------------------------------------------- */
 /* Button                                                                      */

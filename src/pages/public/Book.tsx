@@ -1,7 +1,6 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { Header } from '@/components/shared/Header'
-import { Button } from '@/components/ui'
+import { Button, EmptyState } from '@/components/ui'
 import { ServicePicker } from '@/components/booking/ServicePicker'
 import { StaffPicker } from '@/components/booking/StaffPicker'
 import { DayStrip } from '@/components/booking/DayStrip'
@@ -10,24 +9,25 @@ import { CustomerForm } from '@/components/booking/CustomerForm'
 import { HoldTimer } from '@/components/booking/HoldTimer'
 import { Summary } from '@/components/booking/Summary'
 import { useBookingFlow, useAvailability } from '@/hooks'
-import { useLocale } from '@/context/LocaleContext'
-import { useTenantBundle } from '@/context/TenantContext'
+import { useLocale } from '@/contexts/LocaleContext'
+import { useTenant, useTenantBundle } from '@/contexts/TenantContext'
 import { BOOKING_STEPS } from '@/config/constants'
 import { errorKey } from '@/data/errors'
-import { cn } from '@/lib/cn'
 
-/**
- * The whole customer journey in one page with five states. A multi-page wizard
- * would lose the hold on every navigation and make the back button dangerous;
- * one page keeps the state machine honest.
- */
 export default function Book() {
   const { t } = useLocale()
+  const { reload } = useTenant()
   const bundle = useTenantBundle()
   const navigate = useNavigate()
   const { slug } = useParams()
   const [params] = useSearchParams()
   const flow = useBookingFlow()
+  const [showFormErrors, setShowFormErrors] = useState(false)
+
+  useEffect(() => {
+    reload()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // deep link: /:slug/book?service=sv-cut
   useEffect(() => {
@@ -53,132 +53,138 @@ export default function Book() {
     }
   }, [flow.step, flow.result, navigate, slug])
 
+  if (bundle.services.length === 0 || bundle.staff.length === 0) {
+    return (
+      <div className="wrap" style={{ padding: '40px 16px' }}>
+        <EmptyState icon="✂" title={t('public.notReady')} body={t('public.notReadyBody')} />
+      </div>
+    )
+  }
+
   const stepIndex = BOOKING_STEPS.indexOf(flow.step)
   const selectedStaff =
     bundle.staff.find((s) => s.id === (flow.slot?.staffId ?? flow.staffId)) ?? null
 
+  const handleFormSubmit = () => {
+    setShowFormErrors(true)
+    if (flow.canSubmit) {
+      void flow.submit()
+    }
+  }
+
   return (
-    <>
-      <Header />
+    <div className="wrap booking">
+      <ol className="steps" aria-label={t('nav.book')}>
+        {BOOKING_STEPS.slice(0, 4).map((step, i) => (
+          <li
+            key={step}
+            className="steps__item"
+            data-state={i < stepIndex ? 'done' : i === stepIndex ? 'current' : 'todo'}
+          >
+            <span className="steps__num">{i + 1}</span>
+            <span className="steps__label">{t(`step.${step}`)}</span>
+          </li>
+        ))}
+      </ol>
 
-      <main className="wrap booking">
-        <ol className="steps" aria-label={t('nav.book')}>
-          {BOOKING_STEPS.slice(0, 4).map((step, i) => (
-            <li
-              key={step}
-              className="steps__item"
-              data-state={i < stepIndex ? 'done' : i === stepIndex ? 'current' : 'todo'}
-            >
-              <span className="steps__num">{i + 1}</span>
-              <span className="steps__label">{t(`step.${step}`)}</span>
-            </li>
-          ))}
-        </ol>
+      <div className="booking__grid">
+        <div className="booking__main">
+          {flow.error && (
+            <p className="alert alert--err" role="alert">
+              {t(errorKey(flow.error))}
+            </p>
+          )}
 
-        <div className="booking__grid">
-          <div className="booking__main">
-            {flow.error && (
-              <p className="alert alert--err" role="alert">
-                {t(errorKey(flow.error))}
-              </p>
-            )}
+          {flow.step === 'service' && (
+            <section>
+              <h1 className="section__title">{t('booking.chooseService')}</h1>
+              <ServicePicker value={flow.serviceId} onPick={flow.chooseService} />
+            </section>
+          )}
 
-            {flow.step === 'service' && (
-              <section>
-                <h1 className="section__title">{t('booking.chooseService')}</h1>
-                <ServicePicker value={flow.serviceId} onPick={flow.chooseService} />
-              </section>
-            )}
+          {flow.step === 'staff' && (
+            <section>
+              <h1 className="section__title">{t('booking.chooseStaff')}</h1>
+              <StaffPicker
+                staff={flow.eligibleStaff}
+                value={flow.staffId}
+                onPick={flow.chooseStaff}
+                allowAny={bundle.settings.allowAnyStaff}
+              />
+            </section>
+          )}
 
-            {flow.step === 'staff' && (
-              <section>
-                <h1 className="section__title">{t('booking.chooseStaff')}</h1>
-                <StaffPicker
-                  staff={flow.eligibleStaff}
-                  value={flow.staffId}
-                  onPick={flow.chooseStaff}
-                  allowAny={bundle.settings.allowAnyStaff}
+          {flow.step === 'time' && (
+            <section>
+              <h1 className="section__title">{t('booking.chooseTime')}</h1>
+              <DayStrip
+                value={flow.day}
+                onPick={flow.chooseDay}
+                timeZone={bundle.tenant.timeZone}
+                counts={availability.countsByDay}
+                closedDays={new Set()}
+                days={bundle.settings.maxAdvanceDays ?? 14}
+              />
+              <SlotGrid
+                periods={availability.periods}
+                loading={availability.loading}
+                selected={flow.slot}
+                onPick={(slot) => void flow.chooseSlot(slot)}
+                timeZone={bundle.tenant.timeZone}
+                showStaffName={flow.staffId === null}
+              />
+            </section>
+          )}
+
+          {flow.step === 'details' && (
+            <section>
+              <h1 className="section__title">{t('booking.yourDetails')}</h1>
+              {flow.hold.hold && (
+                <HoldTimer
+                  remainingMs={flow.hold.remainingMs}
+                  totalMs={300_000}
+                  urgent={flow.hold.urgent}
                 />
-              </section>
-            )}
-
-            {flow.step === 'time' && (
-              <section>
-                <h1 className="section__title">{t('booking.chooseTime')}</h1>
-                <DayStrip
-                  value={flow.day}
-                  onPick={flow.chooseDay}
-                  timeZone={bundle.tenant.timeZone}
-                  counts={availability.countsByDay}
-                  closedDays={new Set(bundle.closedDates.map((c) => c.day))}
-                />
-                <SlotGrid
-                  periods={availability.periods}
-                  loading={availability.loading}
-                  selected={flow.slot}
-                  onPick={(slot) => void flow.chooseSlot(slot)}
-                  timeZone={bundle.tenant.timeZone}
-                  showStaffName={flow.staffId === null}
-                  pendingStart={flow.hold.pending ? flow.slot?.start : null}
-                />
-              </section>
-            )}
-
-            {flow.step === 'details' && (
-              <section>
-                <h1 className="section__title">{t('booking.yourDetails')}</h1>
-
-                {flow.hold.hold && (
-                  <HoldTimer
-                    remainingMs={flow.hold.remainingMs}
-                    totalMs={(bundle.settings.holdTtlMin ?? 10) * 60_000}
-                    urgent={flow.hold.urgent}
-                  />
-                )}
-
-                <CustomerForm
-                  draft={flow.draft}
-                  errors={flow.fieldErrors}
-                  onChange={flow.setDraft}
-                  requireEmail={bundle.settings.requireEmail ?? false}
-                  showErrors
-                />
-
-                <div className="booking__actions">
-                  <Button variant="outline" onClick={flow.back}>
-                    {t('action.back')}
-                  </Button>
-                  <Button
-                    onClick={() => void flow.submit()}
-                    disabled={!flow.canSubmit}
-                    loading={flow.submitting}
-                  >
-                    {t('action.confirm')}
-                  </Button>
-                </div>
-              </section>
-            )}
-
-            {flow.step !== 'details' && stepIndex > 0 && (
+              )}
+              <CustomerForm
+                draft={flow.draft}
+                onChange={flow.setDraft}
+                errors={flow.fieldErrors}
+                requireEmail={Boolean(bundle.settings.requireEmail)}
+                showErrors={showFormErrors}
+              />
               <div className="booking__actions">
-                <Button variant="outline" onClick={flow.back}>
+                <Button variant="outline" onClick={flow.back} disabled={Boolean(flow.submitting)}>
                   {t('action.back')}
                 </Button>
+                <Button
+                  onClick={handleFormSubmit}
+                  disabled={!flow.canSubmit}
+                  loading={flow.submitting}
+                >
+                  {t('action.confirm')}
+                </Button>
               </div>
-            )}
-          </div>
+            </section>
+          )}
 
-          <div className={cn('booking__aside', flow.serviceId && 'is-visible')}>
-            <Summary
-              service={flow.service}
-              staff={selectedStaff}
-              slot={flow.slot}
-              timeZone={bundle.tenant.timeZone}
-              currency={bundle.tenant.currency}
-            />
-          </div>
+          {flow.step !== 'details' && stepIndex > 0 && (
+            <div className="booking__actions">
+              <Button variant="outline" onClick={flow.back}>
+                {t('action.back')}
+              </Button>
+            </div>
+          )}
         </div>
-      </main>
-    </>
+
+        <Summary
+          service={flow.service}
+          staff={selectedStaff}
+          slot={flow.slot}
+          timeZone={bundle.tenant.timeZone}
+          currency={bundle.tenant.currency}
+        />
+      </div>
+    </div>
   )
 }

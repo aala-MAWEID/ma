@@ -1,35 +1,68 @@
-import { useEffect, useState, type FormEvent } from 'react'
-import { Outlet } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Navigate, Outlet, useParams } from 'react-router-dom'
 import { AdminNav } from '@/components/admin/AdminNav'
-import { Button, Field, Input, Spinner } from '@/components/ui'
-import { GoogleButton } from '@/components/shared/GoogleButton'
-import { data } from '@/data'
 import { useAuth } from '@/contexts/AuthContext'
 import { useLocale } from '@/contexts/LocaleContext'
 import { useTenantBundle } from '@/contexts/TenantContext'
-import { errorCodeOf, errorKey } from '@/data/errors'
+import { useToast } from '@/contexts/ToastContext'
+import { Button, Spinner } from '@/components/ui'
+import { data } from '@/data'
+import type { AuthStatus } from '@/data/adapter'
 
 export default function AdminShell() {
-  const { t } = useLocale()
+  const { slug = '' } = useParams<{ slug: string }>()
   const bundle = useTenantBundle()
-  const { session, loading, signIn } = useAuth()
-  const [pendingCount, setPendingCount] = useState(0)
-  const [queueCount, setQueueCount] = useState(0)
+  const { session, loading: authLoading, refresh } = useAuth()
+  const { t } = useLocale()
+  const toast = useToast()
+
+  const [status, setStatus] = useState<AuthStatus | null>(null)
+  const [checking, setChecking] = useState(true)
+  const [claiming, setClaiming] = useState(false)
 
   useEffect(() => {
-    if (!session) return
-    const refresh = () => {
-      void data.listRequests(bundle.tenant.id).then((list) => setPendingCount(list.length)).catch(() => {})
-      void data.getQueue(bundle.tenant.id).then((q) => {
-        const waiting = q.filter((t) => t.status !== 'completed' && t.status !== 'cancelled')
-        setQueueCount(waiting.length)
-      }).catch(() => {})
+    let alive = true
+    if (!session) {
+      setChecking(false)
+      return () => {
+        alive = false
+      }
     }
-    refresh()
-    return data.subscribeBookings(bundle.tenant.id, refresh)
-  }, [session, bundle.tenant.id])
+    setChecking(true)
+    data
+      .authStatus(slug)
+      .then((s) => {
+        if (alive) setStatus(s)
+      })
+      .catch((e) => {
+        console.error('[maweid] authStatus failed', e)
+        if (alive) setStatus(null)
+      })
+      .finally(() => {
+        if (alive) setChecking(false)
+      })
+    return () => {
+      alive = false
+    }
+  }, [session, slug])
 
-  if (loading) {
+  async function claim() {
+    setClaiming(true)
+    try {
+      await data.claimShop(slug)
+      const fresh = await data.authStatus(slug)
+      setStatus(fresh)
+      await refresh()
+      toast.success(t('admin.claimed'))
+    } catch (e) {
+      toast.error(t('error.forbidden'))
+      console.error('[maweid] claimShop failed', e)
+    } finally {
+      setClaiming(false)
+    }
+  }
+
+  if (authLoading || checking) {
     return (
       <div className="page-center">
         <Spinner size={32} />
@@ -37,90 +70,39 @@ export default function AdminShell() {
     )
   }
 
-  if (!session) return <SignIn onSubmit={signIn} />
+  // غير مسجّل → إلى صفحة الدخول (لا نموج دخول داخل اللوحة)
+  if (!session) return <Navigate to={`/${slug}/admin/login`} replace />
 
-  return (
-    <div className="admin">
-      <AdminNav pendingCount={pendingCount} queueCount={queueCount} />
-      <div className="admin__main">
-        <Outlet />
+  // مسجّل ولكنه ليس عضواً → بطاقة مطالبة بالمحل أو رفض واضح
+  if (!status?.isMember) {
+    return (
+      <div className="page-center" dir="rtl">
+        <div className="auth-card">
+          <h1 className="auth-card__title">{bundle.tenant.name}</h1>
+          <p className="auth-card__subtitle">
+            {t('admin.signedInAs')}: <strong>{status?.email ?? ''}</strong>
+          </p>
+          {status?.canClaim ? (
+            <>
+              <p className="auth-card__subtitle">{t('admin.claimHint')}</p>
+              <Button variant="primary" block loading={claiming} onClick={claim}>
+                {t('admin.claimShop')}
+              </Button>
+            </>
+          ) : (
+            <div className="alert alert--err">{t('admin.notMember')}</div>
+          )}
+        </div>
       </div>
-    </div>
-  )
-}
-
-function SignIn({ onSubmit }: { onSubmit: (email: string, password: string) => Promise<void> }) {
-  const { t } = useLocale()
-  const bundle = useTenantBundle()
-  const { signInWithGoogle } = useAuth()
-  const [email, setEmail] = useState('owner@zaytouna.ma')
-  const [password, setPassword] = useState('demo1234')
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  const submit = async (e: FormEvent) => {
-    e.preventDefault()
-    setBusy(true)
-    setError(null)
-    try {
-      await onSubmit(email, password)
-    } catch (err) {
-      setError(t(errorKey(errorCodeOf(err))))
-    } finally {
-      setBusy(false)
-    }
+    )
   }
 
-  const redirectTarget = window.location.origin + import.meta.env.BASE_URL + bundle.tenant.slug + '/admin/agenda'
-
   return (
-    <div className="page-center">
-      <form className="signin" onSubmit={submit}>
-        <h1>{t('admin.signInTitle')}</h1>
-        <p className="signin__hint">
-          {t('admin.demoHint', { email: 'owner@zaytouna.ma', password: 'demo1234' })}
-        </p>
-
-        {error && <div className="alert alert--err">{error}</div>}
-
-        <Field label={t('field.email')}>
-          <Input
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            type="email"
-            dir="ltr"
-            autoComplete="username"
-            required
-          />
-        </Field>
-
-        <Field label={t('field.password')}>
-          <Input
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            type="password"
-            dir="ltr"
-            autoComplete="current-password"
-            required
-          />
-        </Field>
-
-        <Button type="submit" loading={busy} block className="mb-3">
-          {t('action.signIn')}
-        </Button>
-
-        <div className="signin__divider" style={{ display: 'flex', alignItems: 'center', margin: '12px 0' }}>
-          <div style={{ flexGrow: 1, borderTop: '1px solid var(--border)' }}></div>
-          <span style={{ margin: '0 12px', fontSize: '0.85rem', color: 'var(--text-subtle)' }}>أو</span>
-          <div style={{ flexGrow: 1, borderTop: '1px solid var(--border)' }}></div>
-        </div>
-
-        <GoogleButton
-          label="تسجيل الدخول بحساب Google"
-          onClick={() => signInWithGoogle(redirectTarget)}
-          block
-        />
-      </form>
+    <div className="admin" dir="rtl">
+      <AdminNav slug={slug} />
+      <main className="admin__main">
+        <Outlet />
+      </main>
     </div>
   )
 }

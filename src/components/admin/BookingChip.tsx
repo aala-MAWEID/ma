@@ -1,6 +1,6 @@
 import { forwardRef, type KeyboardEvent, type PointerEvent } from 'react'
 import { STATUS_META } from '@/config/constants'
-import { useLocale } from '@/context/LocaleContext'
+import { useLocale } from '@/contexts/LocaleContext'
 import { formatTime } from '@/lib/time'
 import { cn } from '@/lib/cn'
 import type { AgendaItem } from '@/types/domain'

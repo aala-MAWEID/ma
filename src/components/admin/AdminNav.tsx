@@ -11,15 +11,19 @@ export function AdminNav({
 }: {
   pendingCount?: number
   queueCount?: number
+  slug?: string
 }) {
   const { t } = useLocale()
   const { signOut, session } = useAuth()
   const perms = usePermissions()
-  const { slug } = useParams()
+  const params = useParams<{ slug: string }>()
+  const slug = params.slug || ''
   const base = `/${slug}/admin`
 
   const links = [
     { to: 'agenda', key: 'admin.calendar', icon: '📅' },
+    { to: 'schedule', key: 'admin.schedule', icon: '🗓' },
+    ...(perms.edit_settings ? [{ to: 'hours', key: 'admin.hours', icon: '⏰' }] : [{ to: 'hours', key: 'admin.hours', icon: '⏰' }]),
     { to: 'queue', key: 'admin.queue', icon: '⏱', badge: queueCount },
     { to: 'requests', key: 'admin.requests', icon: '⚑', badge: pendingCount },
     { to: 'customers', key: 'admin.customers', icon: '👥' },

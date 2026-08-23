@@ -1,4 +1,4 @@
-import { Link, NavLink, useLocation } from 'react-router-dom'
+import { Link, NavLink } from 'react-router-dom'
 import { useLocale } from '@/contexts/LocaleContext'
 import { useTenantBundle } from '@/contexts/TenantContext'
 import { useAuth } from '@/contexts/AuthContext'
@@ -10,18 +10,15 @@ import { GoogleButton } from '@/components/shared/GoogleButton'
 export function Header() {
   const { t, locale, setLocale } = useLocale()
   const bundle = useTenantBundle()
-  const { session, signInWithGoogle, signOut } = useAuth()
-  const location = useLocation()
+  const { session, signOut } = useAuth()
   const openNow = useOpenNow(bundle)
-  
-  // If we don't have a bundle yet, we can't render the header
-  if (!bundle) return null
 
-  const base = `/${bundle.tenant.slug}`
-  const redirectTarget = window.location.origin + import.meta.env.BASE_URL + bundle.tenant.slug + '/admin'
+  const slug = bundle.tenant.slug
+  const base = `/${slug}`
+  const redirectTarget = window.location.origin + import.meta.env.BASE_URL + slug + '/admin'
 
   return (
-    <header className="site-head">
+    <header className="site-head" dir="rtl">
       <div className="wrap site-head__inner">
         <Link to={base} className="brand">
           {bundle.tenant.logoUrl ? (
@@ -43,6 +40,9 @@ export function Header() {
           <NavLink to={`${base}/book`} className="site-nav__link">
             {t('nav.book')}
           </NavLink>
+          <NavLink to={`${base}/queue`} className="site-nav__link">
+            {t('nav.queue')}
+          </NavLink>
           <NavLink to={`${base}/me`} className="site-nav__link">
             {t('nav.myBookings')}
           </NavLink>
@@ -58,21 +58,18 @@ export function Header() {
             <option value="ar">العربية</option>
             <option value="fr">Français</option>
           </select>
+
           {session ? (
-            <>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <Link to={`${base}/admin`} className="btn btn--outline btn--sm">
-                اللوحة
+                {session.displayName ? session.displayName.split(' ')[0] : t('nav.admin')}
               </Link>
-              <button onClick={signOut} className="btn btn--ghost btn--sm">
-                خروج
+              <button type="button" onClick={() => void signOut()} className="btn btn--ghost btn--sm">
+                {t('action.signOut')}
               </button>
-            </>
+            </div>
           ) : (
-            <GoogleButton 
-              label="تسجيل الدخول" 
-              onClick={() => signInWithGoogle(redirectTarget)} 
-              small 
-            />
+            <GoogleButton size="sm" redirectTo={redirectTarget} />
           )}
         </div>
       </div>

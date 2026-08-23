@@ -1,6 +1,6 @@
 import { lazy, Suspense } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
-import { TenantLayout } from './components/shared/TenantGate'
+import { TenantLayout, TenantScope } from './components/shared/TenantGate'
 import { Spinner } from './components/ui'
 
 const Home = lazy(() => import('./pages/public/Home'))
@@ -12,11 +12,13 @@ const Health = lazy(() => import('./pages/dev/Health'))
 
 const AdminShell = lazy(() => import('./pages/admin/AdminShell'))
 const Calendar = lazy(() => import('./pages/admin/Calendar'))
+const Schedule = lazy(() => import('./pages/admin/Schedule'))
 const QueueBoard = lazy(() => import('./pages/admin/QueueBoard'))
 const Requests = lazy(() => import('./pages/admin/Requests'))
 const Customers = lazy(() => import('./pages/admin/Customers'))
 const Staff = lazy(() => import('./pages/admin/Staff'))
 const Services = lazy(() => import('./pages/admin/Services'))
+const Hours = lazy(() => import('./pages/admin/Hours'))
 const Identity = lazy(() => import('./pages/admin/Identity'))
 const Settings = lazy(() => import('./pages/admin/Settings'))
 const Stats = lazy(() => import('./pages/admin/Stats'))
@@ -38,7 +40,6 @@ export function AppRoutes() {
         <Route path="/" element={<Navigate to={`/${defaultTenant}`} replace />} />
         <Route path="/__health" element={<Health />} />
 
-        {/* Public Routes scoped by :slug */}
         <Route path="/:slug" element={<TenantLayout />}>
           <Route index element={<Home />} />
           <Route path="book" element={<Book />} />
@@ -47,23 +48,26 @@ export function AppRoutes() {
           <Route path="me" element={<Me />} />
         </Route>
 
-        {/* Admin Routes */}
-        <Route path="/:slug/admin/login" element={<Login />} />
-        <Route path="/:slug/admin" element={<AdminShell />}>
-          <Route index element={<Navigate to="agenda" replace />} />
-          <Route path="agenda" element={<Calendar />} />
-          <Route path="queue" element={<QueueBoard />} />
-          <Route path="requests" element={<Requests />} />
-          <Route path="customers" element={<Customers />} />
-          <Route path="staff" element={<Staff />} />
-          <Route path="services" element={<Services />} />
-          <Route path="identity" element={<Identity />} />
-          <Route path="settings" element={<Settings />} />
-          <Route path="stats" element={<Stats />} />
-          <Route path="profile" element={<Profile />} />
+        {/* كل ما يلمس اللوحة يجب أن يكون داخل TenantScope */}
+        <Route path="/:slug" element={<TenantScope />}>
+          <Route path="admin/login" element={<Login />} />
+          <Route path="admin" element={<AdminShell />}>
+            <Route index element={<Navigate to="agenda" replace />} />
+            <Route path="agenda" element={<Calendar />} />
+            <Route path="schedule" element={<Schedule />} />
+            <Route path="queue" element={<QueueBoard />} />
+            <Route path="requests" element={<Requests />} />
+            <Route path="customers" element={<Customers />} />
+            <Route path="staff" element={<Staff />} />
+            <Route path="services" element={<Services />} />
+            <Route path="hours" element={<Hours />} />
+            <Route path="identity" element={<Identity />} />
+            <Route path="settings" element={<Settings />} />
+            <Route path="stats" element={<Stats />} />
+            <Route path="profile" element={<Profile />} />
+          </Route>
         </Route>
 
-        {/* Catch-all */}
         <Route path="*" element={<Navigate to={`/${defaultTenant}`} replace />} />
       </Routes>
     </Suspense>

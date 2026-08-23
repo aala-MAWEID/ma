@@ -1,5 +1,5 @@
 import { useMemo, useRef } from 'react'
-import { useLocale } from '@/context/LocaleContext'
+import { useLocale } from '@/contexts/LocaleContext'
 import { addDaysToKey, formatDayKey, relativeDayLabel, todayKey } from '@/lib/time'
 import { cn } from '@/lib/cn'
 import type { DayKey } from '@/types/domain'

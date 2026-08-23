@@ -2,10 +2,14 @@ import { supabase, supabaseConfigProblem } from './client'
 import { fromPostgrest, AppError } from '../errors'
 import {
   NO_PERMS,
+  type AdminBookingInput,
   type AvailabilityQuery,
   type ConfirmInput,
   type DataAdapter,
+  type DayScheduleRow,
+  type Decision,
   type HoldResult,
+  type MyBookingRow,
 } from '../adapter'
 import type {
   AgendaItem,
@@ -165,15 +169,6 @@ function toCustomer(r: Record<string, any>): Customer {
   } as unknown as Customer
 }
 
-function toTimeOff(r: Record<string, any>): TimeOff {
-  const o = camelizeDeep<Record<string, any>>(r)
-  return {
-    ...o,
-    startsAt: new Date(o.startsAt),
-    endsAt: new Date(o.endsAt),
-  } as unknown as TimeOff
-}
-
 let cachedPerms: Permissions = NO_PERMS
 
 async function readSession(): Promise<Session | null> {
@@ -216,7 +211,7 @@ async function readSession(): Promise<Session | null> {
 
 export const supabaseAdapter: DataAdapter = {
   // ---- عام -------------------------------------------------------------
-  async getTenantBundle(slug) {
+  async getTenantBundle(slug: string): Promise<TenantBundle> {
     const raw = await rpc<any>('get_tenant_bundle', { p_slug: slug })
     if (!raw || !raw.tenant) {
       throw new AppError('tenant_not_found', `slug=${slug}`)
@@ -224,14 +219,14 @@ export const supabaseAdapter: DataAdapter = {
     return camelizeDeep<TenantBundle>(raw)
   },
 
-  async getAvailability(queryOrSlug, serviceId, staffId, fromDay, days) {
+  async getAvailability(queryOrSlug, serviceId, staffId, fromDay, days): Promise<Slot[]> {
     const q =
       typeof queryOrSlug === 'object'
         ? {
             slug: queryOrSlug.slug,
             serviceId: queryOrSlug.serviceId,
             staffId: queryOrSlug.staffId ?? null,
-            fromDay: normalizeFromDay(queryOrSlug.fromDay ?? queryOrSlug.from),
+            fromDay: normalizeFromDay(queryOrSlug.day ?? queryOrSlug.from),
             days: queryOrSlug.days ?? 14,
           }
         : {
@@ -261,41 +256,18 @@ export const supabaseAdapter: DataAdapter = {
     )
   },
 
-  async getOpenDays(queryOrSlug, serviceId, staffId, fromDay, days) {
-    const q =
-      typeof queryOrSlug === 'object'
-        ? {
-            slug: queryOrSlug.slug,
-            serviceId: queryOrSlug.serviceId,
-            staffId: queryOrSlug.staffId ?? null,
-            fromDay: normalizeFromDay(queryOrSlug.fromDay ?? queryOrSlug.from),
-            days: queryOrSlug.days ?? 14,
-          }
-        : {
-            slug: queryOrSlug,
-            serviceId: serviceId!,
-            staffId: staffId ?? null,
-            fromDay: normalizeFromDay(fromDay),
-            days: days ?? 14,
-          }
+  async holdSlot(slugOrInput, serviceId, staffId, startsAt): Promise<HoldResult> {
+    const pSlug = typeof slugOrInput === 'string' ? slugOrInput : slugOrInput.tenantId
+    const pServiceId = typeof slugOrInput === 'string' ? serviceId! : slugOrInput.serviceId
+    const pStaffId = typeof slugOrInput === 'string' ? staffId! : slugOrInput.staffId
+    const pStartsAt = typeof slugOrInput === 'string' ? startsAt! : slugOrInput.startsAt
 
-    const rows = await rpc<any[]>('get_open_days', {
-      p_slug: q.slug,
-      p_service_id: q.serviceId,
-      p_staff_id: q.staffId,
-      p_from_day: q.fromDay,
-      p_days: q.days,
-    })
-    return (rows ?? []).map((r) => r.day as string)
-  },
-
-  async holdSlot(slug, serviceId, staffId, startsAt) {
     const booking = toBooking(
       await rpc('hold_slot', {
-        p_slug: slug,
-        p_service_id: serviceId,
-        p_staff_id: staffId,
-        p_starts_at: startsAt.toISOString(),
+        p_slug: pSlug,
+        p_service_id: pServiceId,
+        p_staff_id: pStaffId,
+        p_starts_at: pStartsAt.toISOString(),
       }),
     )
     const expiresAt = booking.holdExpiresAt ?? new Date(Date.now() + 10 * 60_000)
@@ -309,23 +281,43 @@ export const supabaseAdapter: DataAdapter = {
     }
   },
 
-  async releaseHold(bookingId, code) {
+  async releaseHold(bookingId: string, code?: string): Promise<void> {
     await rpc('release_hold', { p_booking_id: bookingId, p_code: code ?? null })
   },
 
-  async confirmHold(inputOrBookingId, code, fullName, phone, email, notes) {
+  async confirmBooking(
+    inputOrBookingId: ConfirmInput | string,
+    code?: string,
+    fullName?: string,
+    phone?: string,
+    email?: string,
+    notes?: string,
+  ): Promise<AgendaItem> {
     const input: ConfirmInput =
       typeof inputOrBookingId === 'object'
         ? inputOrBookingId
         : {
             bookingId: inputOrBookingId,
-            code: code!,
-            fullName: fullName!,
-            phone: phone!,
+            code: code ?? '',
+            fullName: fullName ?? '',
+            phone: phone ?? '',
             email,
             notes,
           }
 
+    return toAgendaItem(
+      await rpc('confirm_hold', {
+        p_booking_id: input.bookingId,
+        p_code: input.code,
+        p_full_name: input.fullName,
+        p_phone: input.phone,
+        p_email: input.email ?? null,
+        p_notes: input.notes ?? null,
+      }),
+    )
+  },
+
+  async confirmHold(input: ConfirmInput): Promise<Booking> {
     return toBooking(
       await rpc('confirm_hold', {
         p_booking_id: input.bookingId,
@@ -338,12 +330,13 @@ export const supabaseAdapter: DataAdapter = {
     )
   },
 
-  async getBookingByCode(code) {
+  async getBookingByCode(code: string): Promise<AgendaItem> {
     const rows = await rpc<any[]>('get_booking_by_code', { p_code: code })
-    return rows?.[0] ? toAgendaItem(rows[0]) : null
+    if (!rows || rows.length === 0) throw new AppError('booking_not_found')
+    return toAgendaItem(rows[0])
   },
 
-  async listBookingsByPhone(slug, phone) {
+  async listBookingsByPhone(slug: string, phone: string): Promise<AgendaItem[]> {
     const rows = await rpc<any[]>('list_bookings_by_phone', {
       p_slug: slug,
       p_phone: phone,
@@ -351,21 +344,53 @@ export const supabaseAdapter: DataAdapter = {
     return (rows ?? []).map(toAgendaItem)
   },
 
-  async cancelBooking(codeOrId, reason = null) {
-    return toBooking(await rpc('cancel_by_code', { p_code: codeOrId, p_reason: reason }))
+  async cancelBooking(id: string, code?: string, reason?: string): Promise<void> {
+    const targetCode = code ?? id
+    await rpc('cancel_by_code', { p_code: targetCode, p_reason: reason ?? null })
   },
 
-  async rescheduleBooking(codeOrId, startsAt, _staffId, _code) {
-    return toBooking(
+  async cancelByCode(code: string, reason?: string): Promise<void> {
+    await rpc('cancel_by_code', { p_code: code, p_reason: reason ?? null })
+  },
+
+  async cancelBookingAdmin(bookingId: string, reason?: string | null): Promise<void> {
+    await rpc('admin_cancel_booking', {
+      p_booking_id: bookingId,
+      p_reason: reason ?? null,
+    })
+  },
+
+  async deleteBooking(bookingId: string, reason?: string | null): Promise<void> {
+    await rpc('admin_delete_booking', {
+      p_booking_id: bookingId,
+      p_reason: reason ?? null,
+    })
+  },
+
+  async rescheduleBooking(
+    codeOrInput:
+      | string
+      | {
+          code: string
+          newStartsAt: Date
+          newStaffId?: string
+        },
+    startsAt?: Date,
+    _staffId?: string,
+    _oldCode?: string,
+  ): Promise<AgendaItem | Booking> {
+    const code = typeof codeOrInput === 'string' ? codeOrInput : codeOrInput.code
+    const nextStartsAt = typeof codeOrInput === 'string' ? startsAt! : codeOrInput.newStartsAt
+    return toAgendaItem(
       await rpc('reschedule_by_code', {
-        p_code: codeOrId,
-        p_starts_at: startsAt.toISOString(),
+        p_code: code,
+        p_starts_at: nextStartsAt.toISOString(),
       }),
     )
   },
 
   // ---- لوحة التحكم ------------------------------------------------------
-  async getAgenda(tenantId, from, to) {
+  async getAgenda(tenantId: string, from: Date, to: Date): Promise<AgendaItem[]> {
     const rows = await rpc<any[]>('get_agenda', {
       p_tenant_id: tenantId,
       p_from: from.toISOString(),
@@ -374,33 +399,43 @@ export const supabaseAdapter: DataAdapter = {
     return (rows ?? []).map(toAgendaItem)
   },
 
-  async listRequests(tenantId) {
+  async listRequests(tenantId: string): Promise<AgendaItem[]> {
     const rows = await rpc<any[]>('list_requests', { p_tenant_id: tenantId })
     return (rows ?? []).map(toAgendaItem)
   },
 
-  async decide(bookingId, decision, reason = null) {
-    return toBooking(
+  async decide(bookingId: string, decision: Decision, reason?: string): Promise<AgendaItem> {
+    return toAgendaItem(
       await rpc('admin_decide', {
         p_booking_id: bookingId,
         p_decision: decision,
-        p_reason: reason,
+        p_reason: reason ?? null,
       }),
     )
   },
 
-  async moveBooking(bookingId, startsAt, staffId = null) {
+  async moveBooking(
+    tenantIdOrBookingId: string,
+    idOrStartsAt: string | Date,
+    startsAtOrStaffId?: Date | string,
+    staffId?: string,
+  ): Promise<AgendaItem> {
+    const bookingId = typeof idOrStartsAt === 'string' ? idOrStartsAt : tenantIdOrBookingId
+    const startsAt =
+      typeof idOrStartsAt === 'string' ? (startsAtOrStaffId as Date) : (idOrStartsAt as Date)
+    const targetStaff = typeof startsAtOrStaffId === 'string' ? startsAtOrStaffId : staffId ?? null
+
     return toAgendaItem(
       await rpc('admin_move_booking', {
         p_booking_id: bookingId,
         p_starts_at: startsAt.toISOString(),
-        p_staff_id: staffId,
+        p_staff_id: targetStaff,
       }),
     )
   },
 
-  async createAdminBooking(i) {
-    return toBooking(
+  async createAdminBooking(i: AdminBookingInput): Promise<AgendaItem> {
+    return toAgendaItem(
       await rpc('admin_create_booking', {
         p_tenant_id: i.tenantId,
         p_service_id: i.serviceId,
@@ -415,17 +450,48 @@ export const supabaseAdapter: DataAdapter = {
     )
   },
 
-  async listCustomers(tenantId) {
+  async updateBookingStatus(
+    tenantId: string,
+    id: string,
+    status: string,
+    reason?: string,
+  ): Promise<AgendaItem> {
+    return toAgendaItem(
+      await rpc('update_booking_status', {
+        p_tenant_id: tenantId,
+        p_booking_id: id,
+        p_status: status,
+        p_reason: reason ?? null,
+      }),
+    )
+  },
+
+  async adminCancelBooking(tenantId: string, id: string, reason?: string): Promise<void> {
+    await rpc('admin_cancel_booking', {
+      p_tenant_id: tenantId,
+      p_booking_id: id,
+      p_reason: reason ?? null,
+    })
+  },
+
+  async adminDeleteBooking(tenantId: string, id: string): Promise<void> {
+    await rpc('admin_delete_booking', {
+      p_tenant_id: tenantId,
+      p_booking_id: id,
+    })
+  },
+
+  async getCustomers(tenantId: string, _search?: string): Promise<Customer[]> {
     const rows = await rpc<any[]>('list_customers', { p_tenant_id: tenantId })
     return (Array.isArray(rows) ? rows : []).map(toCustomer)
   },
 
-  async listTimeOff(tenantId) {
-    const rows = await rpc<any[]>('list_time_off', { p_tenant_id: tenantId })
-    return (Array.isArray(rows) ? rows : []).map(toTimeOff)
+  async listCustomers(tenantId: string): Promise<Customer[]> {
+    const rows = await rpc<any[]>('list_customers', { p_tenant_id: tenantId })
+    return (Array.isArray(rows) ? rows : []).map(toCustomer)
   },
 
-  async getStats(tenantId) {
+  async getStats(tenantId: string): Promise<Stats> {
     const rows = await rpc<any[]>('get_stats', { p_tenant_id: tenantId })
     const s = rows?.[0] ?? {}
     return {
@@ -438,7 +504,7 @@ export const supabaseAdapter: DataAdapter = {
     } as Stats
   },
 
-  async updateSettings(tenantId, patch) {
+  async updateSettings(tenantId: string, patch: Partial<TenantSettings>): Promise<TenantSettings> {
     const snake: Record<string, unknown> = {}
     for (const [k, v] of Object.entries(patch)) {
       snake[k.replace(/[A-Z]/g, (c) => '_' + c.toLowerCase())] = v
@@ -450,7 +516,14 @@ export const supabaseAdapter: DataAdapter = {
     return camelizeDeep<TenantSettings>(out)
   },
 
-  subscribeBookings(tenantId, onChange) {
+  async updateTenantSettings(
+    tenantId: string,
+    patch: Partial<TenantSettings>,
+  ): Promise<TenantSettings> {
+    return this.updateSettings(tenantId, patch)
+  },
+
+  subscribeBookings(tenantId: string, onChange: () => void) {
     const channel = supabase
       .channel(`bookings:${tenantId}`)
       .on(
@@ -469,25 +542,8 @@ export const supabaseAdapter: DataAdapter = {
     }
   },
 
-  // ---- عمليات حسّاسة -----------------------------------------------------
-  async cancelBookingAdmin(bookingId, reason) {
-    return toBooking(
-      await rpc('admin_cancel_booking', {
-        p_booking_id: bookingId,
-        p_reason: reason,
-      }),
-    )
-  },
-
-  async deleteBooking(bookingId, reason) {
-    await rpc('admin_delete_booking', {
-      p_booking_id: bookingId,
-      p_reason: reason,
-    })
-  },
-
   // ---- الطابور ------------------------------------------------------------
-  async getQueue(tenantId, day) {
+  async getQueue(tenantId: string, day?: string): Promise<QueueTicket[]> {
     const rows = await rpc<any[]>('get_queue', {
       p_tenant_id: tenantId,
       p_day: day ?? null,
@@ -495,7 +551,33 @@ export const supabaseAdapter: DataAdapter = {
     return (rows ?? []).map(toTicket)
   },
 
-  async queueJoin(slug, serviceId, staffId, fullName, phone, notes = null) {
+  async joinQueue(input: {
+    tenantId: string
+    serviceId: string
+    staffId?: string | null
+    fullName: string
+    phone: string
+    email?: string
+  }): Promise<QueueTicket> {
+    const raw = await rpc<any>('queue_join', {
+      p_slug: input.tenantId,
+      p_service_id: input.serviceId,
+      p_staff_id: input.staffId ?? null,
+      p_full_name: input.fullName,
+      p_phone: input.phone,
+      p_email: input.email ?? null,
+    })
+    return toTicket(raw)
+  },
+
+  async queueJoin(
+    slug: string,
+    serviceId: string,
+    staffId: string | null,
+    fullName: string,
+    phone: string,
+    notes?: string | null,
+  ): Promise<Booking> {
     return toBooking(
       await rpc('queue_join', {
         p_slug: slug,
@@ -503,59 +585,60 @@ export const supabaseAdapter: DataAdapter = {
         p_staff_id: staffId,
         p_full_name: fullName,
         p_phone: phone,
-        p_notes: notes,
+        p_notes: notes ?? null,
       }),
     )
   },
 
-  async queueNext(tenantId, staffId, closeAs = 'completed') {
+  async queueNext(
+    tenantId: string,
+    staffId?: string | null,
+    closeAs: 'completed' | 'no_show' = 'completed',
+  ): Promise<{ nextId: string | null; nextName: string | null }> {
     const rows = await rpc<any[]>('queue_next', {
       p_tenant_id: tenantId,
-      p_staff_id: staffId,
+      p_staff_id: staffId ?? null,
       p_close_as: closeAs,
     })
     const r = rows?.[0]
     return {
-      finishedId: r?.finished_id ?? null,
       nextId: r?.next_id ?? null,
       nextName: r?.next_name ?? null,
     }
   },
 
-  async queueAdvance(bookingId, places) {
-    return toBooking(
-      await rpc('queue_advance', {
-        p_booking_id: bookingId,
-        p_places: places ?? null,
-      }),
-    )
+  async queueAdvance(bookingId: string, places?: number): Promise<void> {
+    await rpc('queue_advance', {
+      p_booking_id: bookingId,
+      p_places: places ?? null,
+    })
   },
 
-  async queueSkip(bookingId, places = 1) {
-    return toBooking(
-      await rpc('queue_skip', {
-        p_booking_id: bookingId,
-        p_places: places,
-      }),
-    )
+  async queueSkip(bookingId: string, places: number = 1): Promise<void> {
+    await rpc('queue_skip', {
+      p_booking_id: bookingId,
+      p_places: places,
+    })
   },
 
-  async queueReorder(bookingId, beforeId, afterId) {
-    return toBooking(
-      await rpc('queue_reorder', {
-        p_booking_id: bookingId,
-        p_before_id: beforeId,
-        p_after_id: afterId,
-      }),
-    )
+  async queueMove(
+    bookingId: string,
+    beforeId?: string | null,
+    afterId?: string | null,
+  ): Promise<void> {
+    await rpc('queue_reorder', {
+      p_booking_id: bookingId,
+      p_before_id: beforeId ?? null,
+      p_after_id: afterId ?? null,
+    })
   },
 
-  async queueCall(bookingId) {
-    return toBooking(await rpc('queue_call', { p_booking_id: bookingId }))
+  async queueCall(bookingId: string): Promise<void> {
+    await rpc('queue_call', { p_booking_id: bookingId })
   },
 
   // ---- الهوية والإعدادات ---------------------------------------------------
-  async updateTenantIdentity(tenantId, p) {
+  async updateTenantIdentity(tenantId: string, p: Record<string, unknown>): Promise<void> {
     await rpc('update_tenant_identity', {
       p_tenant_id: tenantId,
       p_name: p.name ?? null,
@@ -572,7 +655,7 @@ export const supabaseAdapter: DataAdapter = {
     })
   },
 
-  async upsertStaff(tenantId, i) {
+  async upsertStaff(tenantId: string, i: Record<string, unknown>): Promise<Staff> {
     const out = await rpc<any>('upsert_staff', {
       p_tenant_id: tenantId,
       p_staff_id: i.staffId ?? null,
@@ -586,7 +669,7 @@ export const supabaseAdapter: DataAdapter = {
     return camelizeDeep<Staff>(out)
   },
 
-  async upsertService(tenantId, i) {
+  async upsertService(tenantId: string, i: Record<string, unknown>): Promise<Service> {
     const out = await rpc<any>('upsert_service', {
       p_tenant_id: tenantId,
       p_service_id: i.serviceId ?? null,
@@ -604,7 +687,7 @@ export const supabaseAdapter: DataAdapter = {
     return camelizeDeep<Service>(out)
   },
 
-  async updateMyProfile(patch) {
+  async updateMyProfile(patch: Record<string, unknown>): Promise<void> {
     await rpc('update_my_profile', {
       p_display_name: patch.displayName ?? null,
       p_phone: patch.phone ?? null,
@@ -616,7 +699,7 @@ export const supabaseAdapter: DataAdapter = {
   // ---- الجلسة --------------------------------------------------------------
   getSession: readSession,
 
-  async signInWithGoogle(redirectTo?: string) {
+  async signInWithGoogle(redirectTo?: string): Promise<void> {
     const target = redirectTo ?? window.location.href
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -628,53 +711,99 @@ export const supabaseAdapter: DataAdapter = {
     if (error) throw new AppError('auth_failed', error.message)
   },
 
-  async authStatus(slug: string) {
+  async authStatus(slug: string): Promise<AuthStatus> {
     return (await rpc('auth_status', { p_slug: slug })) as AuthStatus
   },
 
-  async claimShop(slug: string) {
+  async claimShop(slug: string): Promise<{ tenantId: string; role: string }> {
     return (await rpc('claim_shop', { p_slug: slug })) as { tenantId: string; role: string }
   },
 
-  async listAllStaff(tenantId: string) {
+  async listAllStaff(tenantId: string): Promise<Staff[]> {
     return (await rpc('list_all_staff', { p_tenant_id: tenantId })) as Staff[]
   },
 
-  async listAllServices(tenantId: string) {
+  async listAllServices(tenantId: string): Promise<Service[]> {
     return (await rpc('list_all_services', { p_tenant_id: tenantId })) as Service[]
   },
 
-  async deleteStaff(tenantId: string, staffId: string) {
+  async deleteStaff(tenantId: string, staffId: string): Promise<void> {
     await rpc('delete_staff', { p_tenant_id: tenantId, p_staff_id: staffId })
   },
 
-  async deleteService(tenantId: string, serviceId: string) {
+  async deleteService(tenantId: string, serviceId: string): Promise<void> {
     await rpc('delete_service', { p_tenant_id: tenantId, p_service_id: serviceId })
   },
 
-  async setWeekHours(tenantId: string, staffId: string | null, week: WeekHours) {
+  async reorderStaff(tenantId: string, ids: string[]): Promise<unknown[]> {
+    return (await rpc('reorder_staff', { p_tenant_id: tenantId, p_ids: ids })) as unknown[]
+  },
+
+  async reorderServices(tenantId: string, ids: string[]): Promise<unknown[]> {
+    return (await rpc('reorder_services', { p_tenant_id: tenantId, p_ids: ids })) as unknown[]
+  },
+
+  async setStaffServices(
+    tenantId: string,
+    staffId: string,
+    serviceIds: string[],
+  ): Promise<unknown[]> {
+    return (await rpc('set_staff_services', {
+      p_tenant_id: tenantId,
+      p_staff_id: staffId,
+      p_service_ids: serviceIds,
+    })) as unknown[]
+  },
+
+  async getDaySchedule(tenantId: string, day: string): Promise<DayScheduleRow[]> {
+    return (await rpc('get_day_schedule', { p_tenant_id: tenantId, p_day: day })) as never
+  },
+
+  async myBookings(slug?: string): Promise<MyBookingRow[]> {
+    return (await rpc('my_bookings', { p_slug: slug ?? null })) as never
+  },
+
+  async cancelMyBooking(code: string, reason?: string): Promise<void> {
+    await rpc('cancel_my_booking', { p_code: code, p_reason: reason ?? null })
+  },
+
+  async setWeekHours(
+    tenantId: string,
+    staffId: string | null,
+    week: WeekHours,
+  ): Promise<WorkingHour[]> {
     const payload = week.map((d) => ({
       weekday: d.weekday,
       windows: d.windows.map((w) => ({ opens_min: w.opensMin, closes_min: w.closesMin })),
     }))
     return (await rpc('set_week_hours', {
-      p_tenant_id: tenantId, p_staff_id: staffId, p_week: payload,
+      p_tenant_id: tenantId,
+      p_staff_id: staffId,
+      p_week: payload,
     })) as WorkingHour[]
   },
 
-  async listClosedDates(tenantId: string) {
+  async listClosedDates(tenantId: string): Promise<ClosedDate[]> {
     return (await rpc('list_closed_dates', { p_tenant_id: tenantId })) as ClosedDate[]
   },
 
-  async upsertClosedDate(tenantId: string, day: string, label?: string | null) {
-    await rpc('upsert_closed_date', { p_tenant_id: tenantId, p_day: day, p_reason: label ?? null })
+  async upsertClosedDate(
+    tenantId: string,
+    day: string,
+    label?: string | null,
+  ): Promise<unknown> {
+    return await rpc('upsert_closed_date', {
+      p_tenant_id: tenantId,
+      p_day: day,
+      p_reason: label ?? null,
+    })
   },
 
-  async deleteClosedDate(tenantId: string, day: string) {
-    await rpc('delete_closed_date', { p_tenant_id: tenantId, p_day: day })
+  async deleteClosedDate(tenantId: string, day: string): Promise<unknown> {
+    return await rpc('delete_closed_date', { p_tenant_id: tenantId, p_day: day })
   },
 
-  async signIn(email, password) {
+  async signIn(email: string, password: string): Promise<Session> {
     if (supabaseConfigProblem) {
       throw new AppError('network', `supabase_not_configured: ${supabaseConfigProblem}`)
     }
@@ -686,19 +815,19 @@ export const supabaseAdapter: DataAdapter = {
     return s
   },
 
-  async signOut() {
+  async signOut(): Promise<void> {
     cachedPerms = NO_PERMS
     await supabase.auth.signOut()
   },
 
-  onAuthChange(cb) {
+  onAuthChange(cb: (s: Session | null) => void): () => void {
     const { data: sub } = supabase.auth.onAuthStateChange(() => {
       void readSession().then(cb).catch(() => cb(null))
     })
     return () => sub.subscription.unsubscribe()
   },
 
-  permissions() {
+  permissions(): Permissions {
     return cachedPerms
   },
 }

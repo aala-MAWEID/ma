@@ -1,4 +1,4 @@
-import { useLocale } from '@/context/LocaleContext'
+import { useLocale } from '@/contexts/LocaleContext'
 import { cn } from '@/lib/cn'
 import type { Staff, UUID } from '@/types/domain'
 

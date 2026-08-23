@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { data } from '@/data'
 import { errorCodeOf, type ErrorCode } from '@/data/errors'
-import { useTenantBundle } from '@/context/TenantContext'
+import { useTenantBundle } from '@/contexts/TenantContext'
 import { CALENDAR_END_HOUR, CALENDAR_START_HOUR } from '@/config/constants'
 import { addDaysToKey, dayKeyToUtc, todayKey } from '@/lib/time'
 import type { AgendaItem, DayKey, UUID } from '@/types/domain'

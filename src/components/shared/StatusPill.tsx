@@ -1,5 +1,5 @@
 import { STATUS_META } from '@/config/constants'
-import { useLocale } from '@/context/LocaleContext'
+import { useLocale } from '@/contexts/LocaleContext'
 import type { BookingStatus } from '@/types/domain'
 
 export function StatusPill({ status }: { status: BookingStatus }) {

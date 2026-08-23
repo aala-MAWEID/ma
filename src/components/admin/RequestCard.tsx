@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui'
-import { useLocale } from '@/context/LocaleContext'
+import { useLocale } from '@/contexts/LocaleContext'
 import { formatDateTime } from '@/lib/time'
 import { formatMoney } from '@/lib/money'
 import type { AgendaItem } from '@/types/domain'

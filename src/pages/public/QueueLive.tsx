@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { Button, Field, Input, Select, Spinner } from '@/components/ui'
 import { data } from '@/data'
 import { useLocale } from '@/contexts/LocaleContext'
-import { useTenantBundle } from '@/contexts/TenantContext'
+import { useTenant, useTenantBundle } from '@/contexts/TenantContext'
 import { useToast } from '@/contexts/ToastContext'
 import { formatMoney } from '@/lib/money'
 import { normalizePhone } from '@/lib/validation'
@@ -12,6 +12,7 @@ import type { QueueTicket } from '@/data/domain'
 
 export default function QueueLive() {
   const { t, locale } = useLocale()
+  const { reload } = useTenant()
   const bundle = useTenantBundle()
   const { slug } = useParams()
   const toast = useToast()
@@ -42,6 +43,7 @@ export default function QueueLive() {
   }
 
   useEffect(() => {
+    reload()
     loadQueue()
     const unsub = data.subscribeBookings(bundle.tenant.id, () => {
       loadQueue()
