@@ -22,6 +22,10 @@ import type {
   TenantBundle,
   TenantSettings,
   TimeOff,
+  AuthStatus,
+  WeekHours,
+  WorkingHour,
+  ClosedDate,
 } from '../domain'
 
 /* ------------------------------------------------------------------ *
@@ -611,6 +615,64 @@ export const supabaseAdapter: DataAdapter = {
 
   // ---- الجلسة --------------------------------------------------------------
   getSession: readSession,
+
+  async signInWithGoogle(redirectTo?: string) {
+    const target = redirectTo ?? window.location.href
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: target,
+        queryParams: { access_type: 'offline', prompt: 'consent' },
+      },
+    })
+    if (error) throw new AppError('auth_failed', error.message)
+  },
+
+  async authStatus(slug: string) {
+    return (await rpc('auth_status', { p_slug: slug })) as AuthStatus
+  },
+
+  async claimShop(slug: string) {
+    return (await rpc('claim_shop', { p_slug: slug })) as { tenantId: string; role: string }
+  },
+
+  async listAllStaff(tenantId: string) {
+    return (await rpc('list_all_staff', { p_tenant_id: tenantId })) as Staff[]
+  },
+
+  async listAllServices(tenantId: string) {
+    return (await rpc('list_all_services', { p_tenant_id: tenantId })) as Service[]
+  },
+
+  async deleteStaff(tenantId: string, staffId: string) {
+    await rpc('delete_staff', { p_tenant_id: tenantId, p_staff_id: staffId })
+  },
+
+  async deleteService(tenantId: string, serviceId: string) {
+    await rpc('delete_service', { p_tenant_id: tenantId, p_service_id: serviceId })
+  },
+
+  async setWeekHours(tenantId: string, staffId: string | null, week: WeekHours) {
+    const payload = week.map((d) => ({
+      weekday: d.weekday,
+      windows: d.windows.map((w) => ({ opens_min: w.opensMin, closes_min: w.closesMin })),
+    }))
+    return (await rpc('set_week_hours', {
+      p_tenant_id: tenantId, p_staff_id: staffId, p_week: payload,
+    })) as WorkingHour[]
+  },
+
+  async listClosedDates(tenantId: string) {
+    return (await rpc('list_closed_dates', { p_tenant_id: tenantId })) as ClosedDate[]
+  },
+
+  async upsertClosedDate(tenantId: string, day: string, label?: string | null) {
+    await rpc('upsert_closed_date', { p_tenant_id: tenantId, p_day: day, p_reason: label ?? null })
+  },
+
+  async deleteClosedDate(tenantId: string, day: string) {
+    await rpc('delete_closed_date', { p_tenant_id: tenantId, p_day: day })
+  },
 
   async signIn(email, password) {
     if (supabaseConfigProblem) {

@@ -5,12 +5,13 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useLocale } from '@/contexts/LocaleContext'
 import { useTenantBundle } from '@/contexts/TenantContext'
 import { errorCodeOf, errorKey } from '@/data/errors'
+import { GoogleButton } from '@/components/shared/GoogleButton'
 
 export default function Login() {
   const { t } = useLocale()
   const { slug } = useParams()
   const bundle = useTenantBundle()
-  const { signIn } = useAuth()
+  const { signIn, signInWithGoogle } = useAuth()
   const navigate = useNavigate()
 
   const [email, setEmail] = useState('')
@@ -31,6 +32,8 @@ export default function Login() {
       setBusy(false)
     }
   }
+
+  const redirectTarget = window.location.origin + import.meta.env.BASE_URL + (slug ?? bundle.tenant.slug) + '/admin/agenda'
 
   return (
     <div className="page-center">
@@ -65,9 +68,21 @@ export default function Login() {
           />
         </Field>
 
-        <Button type="submit" loading={busy} variant="primary" block className="mt-4">
+        <Button type="submit" loading={busy} variant="primary" block className="mt-4 mb-3">
           {t('action.signIn')}
         </Button>
+
+        <div className="relative flex items-center py-2">
+          <div className="flex-grow border-t border-border"></div>
+          <span className="flex-shrink-0 mx-4 text-subtle text-sm">أو</span>
+          <div className="flex-grow border-t border-border"></div>
+        </div>
+
+        <GoogleButton
+          label="تسجيل الدخول بحساب Google"
+          onClick={() => signInWithGoogle(redirectTarget)}
+          block
+        />
       </form>
     </div>
   )

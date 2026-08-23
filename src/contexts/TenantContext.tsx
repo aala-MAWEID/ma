@@ -55,20 +55,9 @@ export function TenantProvider({ slug, children }: { slug: string; children: Rea
   }, [slug, nonce])
 
   const value = useMemo<TenantValue>(() => {
-    const defaultTenant: Tenant = bundle?.tenant ?? {
-      id: '',
-      slug,
-      name: 'صالون الزيتونة',
-      phone: '+212 522-123456',
-      city: 'الدار البيضاء',
-      brandColor: '#0E7C86',
-      defaultLocale: 'ar',
-      locales: ['ar', 'fr'],
-      timeZone: 'Africa/Casablanca',
-      currency: 'MAD',
-      isPublished: true,
+    if (!bundle && !loading && !error) {
+       // Should not happen as error would be set
     }
-
     const hours = (bundle?.workingHours ?? [])
       .filter((h) => h.staffId === null)
       .map((h) => ({
@@ -78,19 +67,16 @@ export function TenantProvider({ slug, children }: { slug: string; children: Rea
 
     return {
       bundle,
-      tenant: bundle?.tenant ?? defaultTenant,
-      settings: bundle?.settings ?? {},
-      services: bundle?.services ?? [],
-      staff: bundle?.staff ?? [],
-      hours: hours.length > 0 ? hours : [
-        { label: 'الإثنين - السبت', value: '09:00 - 20:00' },
-        { label: 'الأحد', value: '10:00 - 18:00' },
-      ],
+      get tenant() { if (!bundle) throw new Error('No tenant'); return bundle.tenant },
+      get settings() { if (!bundle) throw new Error('No settings'); return bundle.settings },
+      get services() { return bundle?.services ?? [] },
+      get staff() { return bundle?.staff ?? [] },
+      hours,
       loading,
       error,
       reload: () => setNonce((n) => n + 1),
     }
-  }, [bundle, loading, error, slug])
+  }, [bundle, loading, error])
 
   return <TenantContext.Provider value={value}>{children}</TenantContext.Provider>
 }

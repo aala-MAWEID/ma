@@ -20,6 +20,8 @@ import type {
   HoldResult,
   Stats,
   TenantBundle,
+  AuthStatus,
+  WeekHours,
 } from '@/data/adapter'
 import { AppError } from '@/data/errors'
 import type {
@@ -1081,6 +1083,81 @@ export const mockAdapter: DataAdapter = {
   // ---- live ---------------------------------------------------------------
   subscribeBookings(_tenantId, onChange) {
     return store.subscribe(onChange)
+  },
+
+  async signInWithGoogle() {
+    throw new Error('Mock backend does not support Google sign in.')
+  },
+  
+  async authStatus(slug: string) {
+    const s = store.read().session
+    return delay({
+      authenticated: !!s,
+      userId: s?.userId,
+      email: s?.email,
+      displayName: s?.displayName,
+      tenantId: s?.tenantId,
+      tenantSlug: s?.tenantSlug,
+      tenantName: s?.tenantName,
+      tenantFound: true,
+      tenantHasOwner: true,
+      isMember: s?.tenantSlug === slug,
+      role: s?.tenantSlug === slug ? s?.role : null,
+      canClaim: false,
+    })
+  },
+
+  async claimShop(slug: string) {
+    throw new Error('Not supported in mock.')
+  },
+
+  async listAllStaff(tenantId: string) {
+    return delay(store.read().staff.filter((s) => s.tenantId === tenantId))
+  },
+
+  async listAllServices(tenantId: string) {
+    return delay(store.read().services.filter((s) => s.tenantId === tenantId))
+  },
+
+  async deleteStaff(tenantId: string, staffId: string) {
+    store.write((d) => {
+      d.staff = d.staff.filter((s) => s.id !== staffId)
+    })
+    return delay(undefined)
+  },
+
+  async deleteService(tenantId: string, serviceId: string) {
+    store.write((d) => {
+      d.services = d.services.filter((s) => s.id !== serviceId)
+    })
+    return delay(undefined)
+  },
+
+  async setWeekHours(tenantId: string, staffId: string | null, week: WeekHours) {
+    throw new Error('Not implemented in mock')
+  },
+
+  async listClosedDates(tenantId: string) {
+    return delay(store.read().closedDates.filter((c) => c.tenantId === tenantId))
+  },
+
+  async upsertClosedDate(tenantId: string, day: string, label?: string | null) {
+    store.write((d) => {
+      const idx = d.closedDates.findIndex((c) => c.day === day && c.tenantId === tenantId)
+      if (idx !== -1) {
+        d.closedDates[idx] = { ...d.closedDates[idx]!, label: label ?? undefined }
+      } else {
+        d.closedDates.push({ tenantId, day, label: label ?? undefined })
+      }
+    })
+    return delay(undefined)
+  },
+
+  async deleteClosedDate(tenantId: string, day: string) {
+    store.write((d) => {
+      d.closedDates = d.closedDates.filter((c) => !(c.day === day && c.tenantId === tenantId))
+    })
+    return delay(undefined)
   },
 
   // ---- auth ---------------------------------------------------------------

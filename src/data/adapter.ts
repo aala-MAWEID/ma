@@ -15,6 +15,10 @@ import type {
   TenantBundle,
   TenantSettings,
   TimeOff,
+  AuthStatus,
+  WeekHours,
+  WorkingHour,
+  ClosedDate,
 } from './domain'
 
 export * from './domain'
@@ -35,6 +39,10 @@ export type {
   TenantBundle,
   TenantSettings,
   TimeOff,
+  AuthStatus,
+  WeekHours,
+  WorkingHour,
+  ClosedDate,
 }
 
 export type AdminBookingInput = {
@@ -209,9 +217,20 @@ export interface DataAdapter {
   // ---- session -------------------------------------------------------
   getSession(): Promise<Session | null>
   signIn(email: string, password: string): Promise<Session>
+  signInWithGoogle(redirectTo?: string): Promise<void>
+  authStatus(slug: string): Promise<AuthStatus>
+  claimShop(slug: string): Promise<{ tenantId: string; role: string }>
   signOut(): Promise<void>
   onAuthChange(cb: (s: Session | null) => void): () => void
   permissions(): Permissions
+  listAllStaff(tenantId: string): Promise<Staff[]>
+  listAllServices(tenantId: string): Promise<Service[]>
+  deleteStaff(tenantId: string, staffId: string): Promise<void>
+  deleteService(tenantId: string, serviceId: string): Promise<void>
+  setWeekHours(tenantId: string, staffId: string | null, week: WeekHours): Promise<WorkingHour[]>
+  listClosedDates(tenantId: string): Promise<ClosedDate[]>
+  upsertClosedDate(tenantId: string, day: string, label?: string | null): Promise<void>
+  deleteClosedDate(tenantId: string, day: string): Promise<void>
 }
 
 /** Everything false. The safe default before whoami() has answered. */

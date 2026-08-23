@@ -1,17 +1,24 @@
-import { Link, NavLink } from 'react-router-dom'
-import { useLocale } from '@/context/LocaleContext'
-import { useTenant } from '@/context/TenantContext'
+import { Link, NavLink, useLocation } from 'react-router-dom'
+import { useLocale } from '@/contexts/LocaleContext'
+import { useTenantBundle } from '@/contexts/TenantContext'
+import { useAuth } from '@/contexts/AuthContext'
 import { useOpenNow } from '@/hooks'
 import { cn } from '@/lib/cn'
-import type { Locale } from '@/types/domain'
+import type { Locale } from '@/data/domain'
+import { GoogleButton } from '@/components/shared/GoogleButton'
 
 export function Header() {
   const { t, locale, setLocale } = useLocale()
-  const { bundle } = useTenant()
+  const bundle = useTenantBundle()
+  const { session, signInWithGoogle, signOut } = useAuth()
+  const location = useLocation()
   const openNow = useOpenNow(bundle)
+  
+  // If we don't have a bundle yet, we can't render the header
   if (!bundle) return null
 
   const base = `/${bundle.tenant.slug}`
+  const redirectTarget = window.location.origin + import.meta.env.BASE_URL + bundle.tenant.slug + '/admin'
 
   return (
     <header className="site-head">
@@ -51,9 +58,22 @@ export function Header() {
             <option value="ar">العربية</option>
             <option value="fr">Français</option>
           </select>
-          <Link to={`${base}/book`} className="btn btn--primary btn--sm">
-            {t('action.book')}
-          </Link>
+          {session ? (
+            <>
+              <Link to={`${base}/admin`} className="btn btn--outline btn--sm">
+                اللوحة
+              </Link>
+              <button onClick={signOut} className="btn btn--ghost btn--sm">
+                خروج
+              </button>
+            </>
+          ) : (
+            <GoogleButton 
+              label="تسجيل الدخول" 
+              onClick={() => signInWithGoogle(redirectTarget)} 
+              small 
+            />
+          )}
         </div>
       </div>
     </header>

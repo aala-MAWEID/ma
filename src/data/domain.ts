@@ -295,3 +295,22 @@ export interface TenantBundle {
   workingHours: WorkingHour[]
   closedDates: ClosedDate[]
 }
+
+export type AuthStatus = {
+  authenticated: boolean
+  userId?: string
+  email?: string
+  displayName?: string | null
+  avatarUrl?: string | null
+  tenantId?: string | null
+  tenantSlug?: string | null
+  tenantName?: string | null
+  tenantFound?: boolean
+  tenantHasOwner?: boolean
+  isMember: boolean
+  role?: string | null
+  canClaim: boolean
+}
+
+export type HourWindow = { opensMin: number; closesMin: number }
+export type WeekHours = Array<{ weekday: number; windows: HourWindow[] }>

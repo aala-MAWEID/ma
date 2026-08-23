@@ -9,7 +9,7 @@ import {
 } from 'react'
 import { data } from '../data'
 import { NO_PERMS } from '../data/adapter'
-import type { Permissions, Session } from '../data/domain'
+import type { Permissions, Session, AuthStatus } from '../data/domain'
 
 interface AuthValue {
   session: Session | null
@@ -20,6 +20,8 @@ interface AuthValue {
   /** true for owner, manager or staff of this shop */
   isMember: boolean
   signIn: (email: string, password: string) => Promise<void>
+  signInWithGoogle: (redirectTo?: string) => Promise<void>
+  status: (slug: string) => Promise<AuthStatus>
   signOut: () => Promise<void>
   refresh: () => Promise<void>
 }
@@ -42,9 +44,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     void load()
-    // Supabase refreshes tokens in the background and can sign the user out
-    // from another tab. Without this subscription the dashboard would keep
-    // rendering for a session that no longer exists.
     return data.onAuthChange((s) => {
       setSession(s)
       setLoading(false)
@@ -60,6 +59,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isMember: session != null,
       async signIn(email, password) {
         setSession(await data.signIn(email, password))
+      },
+      async signInWithGoogle(redirectTo) {
+        await data.signInWithGoogle(redirectTo)
+      },
+      async status(slug: string) {
+        return await data.authStatus(slug)
       },
       async signOut() {
         await data.signOut()

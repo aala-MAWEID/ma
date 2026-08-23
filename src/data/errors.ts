@@ -39,6 +39,7 @@ export type ErrorCode =
   | 'invalid_color'
   | 'invalid_duration'
   | 'unsupported'
+  | 'auth_failed'
 
 export class AppError extends Error {
   readonly code: ErrorCode
@@ -98,6 +99,7 @@ const KNOWN = new Set<string>([
   'bad_close_status',
   'invalid_color',
   'invalid_duration',
+  'auth_failed',
 ])
 
 /**
