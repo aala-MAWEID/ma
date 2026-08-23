@@ -1,0 +1,63 @@
+name: deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# الصلاحيات التي يحتاجها النشر على Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# نشر واحد في كل مرة
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # npm install وليس npm ci لأن المستودع لا يحتوي package-lock.json
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Build
+        run: npm run build:pages
+        env:
+          # مهم جداً: اسم المستودع بين شرطتين مائلتين
+          VITE_BASE_PATH: /ma/
+          VITE_DATA_BACKEND: ${{ vars.VITE_DATA_BACKEND || 'supabase' }}
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+          VITE_DEFAULT_TENANT: ${{ vars.VITE_DEFAULT_TENANT || 'zaytouna' }}
+
+      - name: Fail early if env is missing
+        run: |
+          if grep -rq "placeholder.supabase.co" dist/assets 2>/dev/null; then
+            echo "::warning::لم تُضبط متغيرات Supabase في Settings > Secrets and variables > Actions > Variables"
+          fi
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

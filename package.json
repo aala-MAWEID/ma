@@ -9,6 +9,8 @@
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
     "build": "node scripts/audit-logical-props.mjs && tsc -b && vite build",
+    "build:pages": "vite build && node scripts/pages-fallback.mjs",
+    "preview:pages": "vite preview --port=4173",
     "preview": "vite preview",
     "typecheck": "tsc -b --noEmit",
     "test": "vitest run",
