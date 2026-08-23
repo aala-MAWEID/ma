@@ -41,6 +41,9 @@ import type {
   TenantSettings,
   TimeOff,
   UUID,
+  PublicQueue,
+  TurnStatus,
+  TimeOffRow,
 } from '@/types/domain'
 import { BLOCKING_STATUSES, MOVABLE_STATUSES } from '@/config/constants'
 import { computeAvailability, windowsFor } from '@/lib/availability'
@@ -1248,6 +1251,155 @@ export const mockAdapter: DataAdapter = {
   async deleteClosedDate(tenantId: string, day: string): Promise<unknown> {
     store.write((d) => {
       d.closedDates = d.closedDates.filter((c) => !(c.day === day && c.tenantId === tenantId))
+    })
+    return delay(undefined)
+  },
+
+  async queuePublic(slug: string, _day?: string | null): Promise<PublicQueue> {
+    const s = store.read()
+    if (s.tenant.slug !== slug && s.tenant.id !== slug) {
+      return delay({ found: false })
+    }
+    const staffMap = new Map(s.staff.map((st) => [st.id, st]))
+    const srvMap = new Map(s.services.map((sv) => [sv.id, sv]))
+
+    const queueBookings = s.bookings
+      .filter(
+        (b) =>
+          b.tenantId === s.tenant.id &&
+          ['pending', 'confirmed', 'serving'].includes(b.status) &&
+          (b.mode === 'queue' || b.source === 'walk_in'),
+      )
+      .sort((a, b) => (a.queueRank ?? 1000) - (b.queueRank ?? 1000))
+
+    const servingCount = queueBookings.filter((b) => b.status === 'serving').length
+    const waitingCount = queueBookings.filter((b) => b.status !== 'serving').length
+
+    return delay({
+      found: true,
+      slug: s.tenant.slug,
+      day: todayKey(s.tenant.timeZone),
+      enabled: s.settings.queueEnabled ?? true,
+      avgMin: 20,
+      serving: servingCount,
+      waiting: waitingCount,
+      nextWaitMin: waitingCount * 20,
+      items: queueBookings.map((b, i) => ({
+        slotNo: i + 1,
+        status: b.status,
+        staffName: staffMap.get(b.staffId)?.displayName ?? null,
+        serviceName: srvMap.get(b.serviceId)?.name ?? null,
+        durationMin: srvMap.get(b.serviceId)?.durationMin ?? 30,
+        waitMin: Math.max(0, i * 20),
+      })),
+    })
+  },
+
+  async turnStatus(code: string): Promise<TurnStatus> {
+    const s = store.read()
+    const b = s.bookings.find((x) => x.code === code.trim().toUpperCase())
+    if (!b) return delay({ found: false, reason: 'not_found' })
+
+    const staff = s.staff.find((st) => st.id === b.staffId)
+    const srv = s.services.find((sv) => sv.id === b.serviceId)
+
+    const ahead = s.bookings.filter(
+      (other) =>
+        other.tenantId === b.tenantId &&
+        ['pending', 'confirmed'].includes(other.status) &&
+        (other.queueRank ?? 1000) < (b.queueRank ?? 1000),
+    ).length
+
+    return delay({
+      found: true,
+      code: b.code,
+      slug: s.tenant.slug,
+      timeZone: s.tenant.timeZone,
+      mode: b.mode ?? 'appointment',
+      status: b.status,
+      ahead,
+      slotNo: ahead + 1,
+      waitMin: ahead * 20,
+      startsAt: b.startsAt.toISOString(),
+      endsAt: b.endsAt.toISOString(),
+      day: dayKeyOf(b.startsAt, s.tenant.timeZone),
+      serviceName: srv?.name ?? null,
+      staffName: staff?.displayName ?? null,
+      avgMin: 20,
+      canCancel: !['cancelled', 'completed', 'no_show'].includes(b.status),
+    })
+  },
+
+  async listTimeOff(tenantId: string): Promise<TimeOffRow[]> {
+    const s = store.read()
+    const staffMap = new Map(s.staff.map((st) => [st.id, st]))
+    const list = s.timeOff
+      .filter((t) => t.tenantId === tenantId)
+      .map((t) => ({
+        id: t.id,
+        staffId: t.staffId,
+        staffName: t.staffId ? staffMap.get(t.staffId)?.displayName ?? null : null,
+        startsAt: t.startsAt.toISOString(),
+        endsAt: t.endsAt.toISOString(),
+        reason: t.reason ?? null,
+      }))
+    return delay(list)
+  },
+
+  async upsertTimeOff(input: {
+    tenantId: string
+    id?: string | null
+    staffId?: string | null
+    startsAt: Date
+    endsAt: Date
+    reason?: string | null
+  }): Promise<TimeOffRow> {
+    const s = store.read()
+    const staff = input.staffId ? s.staff.find((st) => st.id === input.staffId) : null
+    let result: TimeOffRow
+    store.write((d) => {
+      if (input.id) {
+        const existing = d.timeOff.find((t) => t.id === input.id)
+        if (existing) {
+          existing.staffId = input.staffId ?? null
+          existing.startsAt = input.startsAt
+          existing.endsAt = input.endsAt
+          existing.reason = input.reason ?? undefined
+          result = {
+            id: existing.id,
+            staffId: existing.staffId,
+            staffName: staff?.displayName ?? null,
+            startsAt: existing.startsAt.toISOString(),
+            endsAt: existing.endsAt.toISOString(),
+            reason: existing.reason ?? null,
+          }
+          return
+        }
+      }
+      const newId = uid('to')
+      d.timeOff.push({
+        id: newId,
+        tenantId: input.tenantId,
+        staffId: input.staffId ?? null,
+        startsAt: input.startsAt,
+        endsAt: input.endsAt,
+        reason: input.reason ?? undefined,
+      })
+      result = {
+        id: newId,
+        staffId: input.staffId ?? null,
+        staffName: staff?.displayName ?? null,
+        startsAt: input.startsAt.toISOString(),
+        endsAt: input.endsAt.toISOString(),
+        reason: input.reason ?? null,
+      }
+    })
+    return delay(result!)
+  },
+
+  async deleteTimeOff(tenantId: string, id: string): Promise<void> {
+    store.write((d) => {
+      d.timeOff = d.timeOff.filter((t) => !(t.id === id && t.tenantId === tenantId))
     })
     return delay(undefined)
   },

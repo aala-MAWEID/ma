@@ -314,3 +314,57 @@ export type AuthStatus = {
 
 export type HourWindow = { opensMin: number; closesMin: number }
 export type WeekHours = Array<{ weekday: number; windows: HourWindow[] }>
+
+export type PublicQueueItem = {
+  slotNo: number
+  status: string
+  staffName: string | null
+  serviceName: string | null
+  durationMin: number
+  waitMin: number
+}
+
+export type PublicQueue = {
+  found: boolean
+  slug?: string
+  day?: string
+  enabled?: boolean
+  avgMin?: number
+  serving?: number
+  waiting?: number
+  nextWaitMin?: number
+  items?: PublicQueueItem[]
+}
+
+export type TurnStatus = {
+  found: boolean
+  reason?: string
+  code?: string
+  slug?: string
+  timeZone?: string
+  mode?: 'queue' | 'appointment'
+  status?: string
+  /** عدد الأشخاص قبلك — عدد فقط، بلا أسماء */
+  ahead?: number
+  slotNo?: number
+  /** الدقائق المتوقعة حتى دورك */
+  waitMin?: number
+  etaAt?: string
+  startsAt?: string
+  endsAt?: string
+  day?: string
+  serviceName?: string | null
+  staffName?: string | null
+  avgMin?: number
+  canCancel?: boolean
+}
+
+export type TimeOffRow = {
+  id: string
+  staffId: string | null
+  staffName: string | null
+  startsAt: string
+  endsAt: string
+  reason: string | null
+}
+

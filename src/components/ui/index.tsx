@@ -11,11 +11,11 @@ import {
 } from 'react'
 import { createPortal } from 'react-dom'
 import { cn } from '@/lib/cn'
-import { useEscape, useToast, ToastContext, useToastState } from '@/hooks'
+import { useEscape } from '@/hooks'
 import { useLocale } from '@/contexts/LocaleContext'
 
 /* -------------------------------------------------------------------------- */
-/* Button                                                                      */
+/* Button & IconButton                                                         */
 /* -------------------------------------------------------------------------- */
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
@@ -42,6 +42,45 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
     </button>
   )
 })
+
+type IconName = 'edit' | 'trash' | 'plus' | 'refresh' | 'bell'
+
+const ICON_PATHS: Record<IconName, string> = {
+  edit: 'M4 20h4l10-10-4-4L4 16v4zm12.7-12.7 2-2a1.4 1.4 0 0 0 0-2l-2-2a1.4 1.4 0 0 0-2 0l-2 2 4 4z',
+  trash: 'M6 7h12l-1 13H7L6 7zm3-3h6l1 2H8l1-2z',
+  plus: 'M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6V5z',
+  refresh: 'M12 5V2L7 6l5 4V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7z',
+  bell: 'M12 2a6 6 0 0 0-6 6v4l-2 3h16l-2-3V8a6 6 0 0 0-6-6zm0 20a3 3 0 0 0 3-3H9a3 3 0 0 0 3 3z',
+}
+
+export function IconButton({
+  icon,
+  label,
+  showLabel = false,
+  tone = 'default',
+  className,
+  ...rest
+}: {
+  icon: IconName
+  label: string
+  showLabel?: boolean
+  tone?: 'default' | 'danger'
+} & React.ButtonHTMLAttributes<HTMLButtonElement>) {
+  return (
+    <button
+      type="button"
+      title={label}
+      aria-label={showLabel ? undefined : label}
+      className={cn('btn-icon', tone === 'danger' && 'btn-icon--danger', className)}
+      {...rest}
+    >
+      <svg className="btn-icon__svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path d={ICON_PATHS[icon]} />
+      </svg>
+      {showLabel ? <span>{label}</span> : null}
+    </button>
+  )
+}
 
 /* -------------------------------------------------------------------------- */
 /* Field wrapper + inputs                                                      */
@@ -185,12 +224,14 @@ function Overlay({
   onClose,
   children,
   variant,
+  className,
   labelledBy,
 }: {
   open: boolean
   onClose: () => void
   children: ReactNode
   variant: 'modal' | 'drawer'
+  className?: string
   labelledBy?: string
 }) {
   const ref = useRef<HTMLDivElement>(null)
@@ -213,7 +254,7 @@ function Overlay({
     <div className="scrim" onMouseDown={onClose}>
       <div
         ref={ref}
-        className={variant}
+        className={cn(variant, className)}
         role="dialog"
         aria-modal="true"
         aria-labelledby={labelledBy}
@@ -231,21 +272,28 @@ export function Modal({
   open,
   onClose,
   title,
+  subtitle,
+  wide,
   children,
   footer,
 }: {
   open: boolean
   onClose: () => void
   title: string
+  subtitle?: ReactNode
+  wide?: boolean
   children: ReactNode
   footer?: ReactNode
 }) {
   const id = useId()
   const { t } = useLocale()
   return (
-    <Overlay open={open} onClose={onClose} variant="modal" labelledBy={id}>
+    <Overlay open={open} onClose={onClose} variant="modal" className={wide ? 'modal--wide' : undefined} labelledBy={id}>
       <header className="modal__head">
-        <h2 id={id}>{title}</h2>
+        <div>
+          <h2 id={id} className="modal__title">{title}</h2>
+          {subtitle && <p className="modal__sub">{subtitle}</p>}
+        </div>
         <button className="icon-btn" onClick={onClose} aria-label={t('action.close')}>
           ✕
         </button>
@@ -282,38 +330,5 @@ export function Drawer({
       <div className="drawer__body">{children}</div>
       {footer && <footer className="drawer__foot">{footer}</footer>}
     </Overlay>
-  )
-}
-
-/* -------------------------------------------------------------------------- */
-/* Toasts                                                                      */
-/* -------------------------------------------------------------------------- */
-
-export function ToastProvider({ children }: { children: ReactNode }) {
-  const value = useToastState()
-  return (
-    <ToastContext.Provider value={value}>
-      {children}
-      <ToastViewport />
-    </ToastContext.Provider>
-  )
-}
-
-function ToastViewport() {
-  const { toasts, dismiss } = useToast()
-  if (toasts.length === 0) return null
-  return createPortal(
-    <div className="toasts" role="status" aria-live="polite">
-      {toasts.map((toast) => (
-        <button
-          key={toast.id}
-          className={cn('toast', `toast--${toast.tone}`)}
-          onClick={() => dismiss(toast.id)}
-        >
-          {toast.message}
-        </button>
-      ))}
-    </div>,
-    document.body,
   )
 }

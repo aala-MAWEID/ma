@@ -1,7 +1,7 @@
-import { useId } from 'react'
+import { useState } from 'react'
 import { Field, Input, Textarea } from '@/components/ui'
 import { useLocale } from '@/contexts/LocaleContext'
-import type { CustomerDraft, CustomerErrors } from '@/lib/validation'
+import { normalizePhone, phoneProblem, type CustomerDraft, type CustomerErrors } from '@/lib/validation'
 
 export function CustomerForm({
   draft,
@@ -17,7 +17,13 @@ export function CustomerForm({
   showErrors: boolean
 }) {
   const { t } = useLocale()
-  const ids = { name: useId(), phone: useId(), email: useId(), notes: useId() }
+  const [touched, setTouched] = useState<Record<string, boolean>>({})
+  const mark = (field: string) => setTouched((prev) => ({ ...prev, [field]: true }))
+  const show = (field: string) => showErrors || touched[field] === true
+
+  const normalized = normalizePhone(draft.phone)
+  const problem = phoneProblem(draft.phone)
+
   const set = (patch: Partial<CustomerDraft>) => onChange({ ...draft, ...patch })
 
   return (
@@ -25,65 +31,85 @@ export function CustomerForm({
       <Field
         label={t('field.name')}
         required
-        htmlFor={ids.name}
-        error={showErrors && errors.fullName ? t(errors.fullName) : undefined}
+        htmlFor="fullName"
+        error={show('fullName') && errors.fullName ? t(errors.fullName) : undefined}
       >
         <Input
-          id={ids.name}
+          id="fullName"
+          name="fullName"
           value={draft.fullName}
           onChange={(e) => set({ fullName: e.target.value })}
+          onBlur={() => mark('fullName')}
           autoComplete="name"
-          invalid={showErrors && Boolean(errors.fullName)}
+          invalid={show('fullName') && Boolean(errors.fullName)}
+          aria-invalid={show('fullName') && Boolean(errors.fullName)}
         />
       </Field>
 
       <Field
-        label={t('field.phone')}
+        label={t('form.phone')}
         required
-        htmlFor={ids.phone}
-        error={showErrors && errors.phone ? t(errors.phone) : undefined}
+        htmlFor="phone"
+        error={show('phone') && errors.phone ? t(errors.phone) : undefined}
+        hint={
+          normalized
+            ? t('form.phoneOk') + ' ' + normalized
+            : problem === 'tooLong'
+              ? t('form.phoneTooLong')
+              : problem === 'tooShort'
+                ? t('form.phoneTooShort')
+                : t('form.phoneHint')
+        }
       >
         <Input
-          id={ids.phone}
-          value={draft.phone}
-          onChange={(e) => set({ phone: e.target.value })}
+          id="phone"
+          name="phone"
           type="tel"
           inputMode="tel"
-          dir="ltr"
-          placeholder="06 12 80 69 32"
           autoComplete="tel"
-          invalid={showErrors && Boolean(errors.phone)}
+          dir="ltr"
+          maxLength={20}
+          value={draft.phone}
+          invalid={show('phone') && Boolean(errors.phone)}
+          aria-invalid={show('phone') && Boolean(errors.phone)}
+          onBlur={() => mark('phone')}
+          onChange={(e) => set({ phone: e.target.value })}
         />
       </Field>
 
       <Field
-        label={t('field.email')}
+        label={t('form.field.email')}
         required={requireEmail}
-        hint={requireEmail ? undefined : ` · ${t('field.optional')}`}
-        htmlFor={ids.email}
-        error={showErrors && errors.email ? t(errors.email) : undefined}
+        hint={requireEmail ? undefined : ` · (${t('field.optional')})`}
+        htmlFor="email"
+        error={show('email') && errors.email ? t(errors.email) : undefined}
       >
         <Input
-          id={ids.email}
+          id="email"
+          name="email"
           value={draft.email ?? ''}
           onChange={(e) => set({ email: e.target.value })}
+          onBlur={() => mark('email')}
           type="email"
           dir="ltr"
           autoComplete="email"
-          invalid={showErrors && Boolean(errors.email)}
+          invalid={show('email') && Boolean(errors.email)}
+          aria-invalid={show('email') && Boolean(errors.email)}
         />
       </Field>
 
       <Field
-        label={t('field.notes')}
-        hint={` · ${t('field.optional')}`}
-        htmlFor={ids.notes}
-        error={showErrors && errors.notes ? t(errors.notes) : undefined}
+        label={t('form.field.notes')}
+        hint={` · (${t('field.optional')})`}
+        htmlFor="notes"
+        error={show('notes') && errors.notes ? t(errors.notes) : undefined}
       >
         <Textarea
-          id={ids.notes}
+          id="notes"
+          name="notes"
           value={draft.notes ?? ''}
           onChange={(e) => set({ notes: e.target.value })}
+          onBlur={() => mark('notes')}
           maxLength={500}
         />
       </Field>

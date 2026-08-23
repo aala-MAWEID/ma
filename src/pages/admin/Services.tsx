@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Button, EmptyState, Field, Input, Spinner } from '@/components/ui'
+import { Button, EmptyState, Field, IconButton, Input, Modal, Spinner } from '@/components/ui'
 import { data } from '@/data'
 import { useLocale } from '@/contexts/LocaleContext'
 import { useTenantBundle, useTenant } from '@/contexts/TenantContext'
@@ -69,8 +69,12 @@ export default function ServicesPage() {
     setError(null)
   }
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const closeEdit = () => {
+    setEditingService(null)
+    setError(null)
+  }
+
+  const handleSave = async () => {
     if (!editingService?.name?.trim()) {
       setError(t('error.invalid_name'))
       return
@@ -217,14 +221,13 @@ export default function ServicesPage() {
                       ↓
                     </Button>
                   </div>
-                  <div className="flex gap-1">
-                    <Button
-                      size="sm"
-                      variant="outline"
+                  <div className="row-actions">
+                    <IconButton
+                      icon="edit"
+                      label={t('common.edit')}
+                      showLabel
                       onClick={() => handleOpenEdit(s)}
-                    >
-                      {t('common.edit')}
-                    </Button>
+                    />
                     <Button
                       size="sm"
                       variant="quiet"
@@ -232,13 +235,12 @@ export default function ServicesPage() {
                     >
                       {s.isActive ? t('common.deactivate') : t('common.activate')}
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="quiet"
+                    <IconButton
+                      icon="trash"
+                      tone="danger"
+                      label={t('common.delete')}
                       onClick={() => handleDelete(s)}
-                    >
-                      {t('common.delete')}
-                    </Button>
+                    />
                   </div>
                 </div>
               )}
@@ -247,119 +249,120 @@ export default function ServicesPage() {
         </div>
       )}
 
-      {editingService && (
-        <div className="modal-backdrop" onClick={() => setEditingService(null)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 500 }}>
-            <h2>{editingService.id ? t('common.edit') : t('admin.addService')}</h2>
-            <form onSubmit={handleSave} className="modal-form">
-              {error && <div className="alert alert--err">{error}</div>}
+      <Modal
+        open={Boolean(editingService)}
+        onClose={closeEdit}
+        title={editingService?.id ? t('common.edit') : t('admin.addService')}
+        footer={
+          <>
+            <Button variant="quiet" onClick={closeEdit} disabled={busy}>
+              {t('common.cancel')}
+            </Button>
+            <Button variant="primary" onClick={() => void handleSave()} loading={busy}>
+              {t('common.save')}
+            </Button>
+          </>
+        }
+      >
+        <form
+          className="modal-form"
+          onSubmit={(e) => {
+            e.preventDefault()
+            void handleSave()
+          }}
+        >
+          {error && <div className="alert alert--err">{error}</div>}
 
-              <div className="grid grid-cols-2 gap-3">
-                <Field label={t('admin.serviceName')}>
-                  <Input
-                    value={editingService.name ?? ''}
-                    onChange={(e) =>
-                      setEditingService({ ...editingService, name: e.target.value })
-                    }
-                    required
-                  />
-                </Field>
-                <Field label={t('admin.serviceNameFr')}>
-                  <Input
-                    value={editingService.nameFr ?? ''}
-                    onChange={(e) =>
-                      setEditingService({ ...editingService, nameFr: e.target.value })
-                    }
-                    dir="ltr"
-                  />
-                </Field>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <Field label={`${t('admin.price')} (${bundle.tenant.currency})`}>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="5"
-                    value={priceInput}
-                    onChange={(e) => setPriceInput(e.target.value)}
-                    required
-                  />
-                </Field>
-
-                <Field label={`${t('admin.duration')} (${t('common.min')})`}>
-                  <Input
-                    type="number"
-                    min="5"
-                    step="5"
-                    value={editingService.durationMin ?? 30}
-                    onChange={(e) =>
-                      setEditingService({
-                        ...editingService,
-                        durationMin: parseInt(e.target.value) || 30,
-                      })
-                    }
-                    required
-                  />
-                </Field>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <Field label={t('admin.bufferBefore')}>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="5"
-                    value={editingService.bufferBeforeMin ?? 0}
-                    onChange={(e) =>
-                      setEditingService({
-                        ...editingService,
-                        bufferBeforeMin: parseInt(e.target.value) || 0,
-                      })
-                    }
-                  />
-                </Field>
-                <Field label={t('admin.bufferAfter')}>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="5"
-                    value={editingService.bufferAfterMin ?? 0}
-                    onChange={(e) =>
-                      setEditingService({
-                        ...editingService,
-                        bufferAfterMin: parseInt(e.target.value) || 0,
-                      })
-                    }
-                  />
-                </Field>
-              </div>
-
-              <Field label={t('admin.description')}>
-                <Input
-                  value={editingService.description ?? ''}
-                  onChange={(e) =>
-                    setEditingService({ ...editingService, description: e.target.value })
-                  }
-                />
-              </Field>
-
-              <div className="modal-actions">
-                <Button type="submit" loading={busy} variant="primary">
-                  {t('common.save')}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setEditingService(null)}
-                >
-                  {t('common.cancel')}
-                </Button>
-              </div>
-            </form>
+          <div className="modal-form__row">
+            <Field label={t('admin.serviceName')}>
+              <Input
+                value={editingService?.name ?? ''}
+                onChange={(e) =>
+                  setEditingService((prev) => (prev ? { ...prev, name: e.target.value } : null))
+                }
+                required
+              />
+            </Field>
+            <Field label={t('admin.serviceNameFr')}>
+              <Input
+                value={editingService?.nameFr ?? ''}
+                onChange={(e) =>
+                  setEditingService((prev) => (prev ? { ...prev, nameFr: e.target.value } : null))
+                }
+                dir="ltr"
+              />
+            </Field>
           </div>
-        </div>
-      )}
+
+          <div className="modal-form__row">
+            <Field label={`${t('admin.price')} (${bundle.tenant.currency})`}>
+              <Input
+                type="number"
+                min="0"
+                step="5"
+                value={priceInput}
+                onChange={(e) => setPriceInput(e.target.value)}
+                required
+              />
+            </Field>
+
+            <Field label={`${t('admin.duration')} (${t('common.min')})`}>
+              <Input
+                type="number"
+                min="5"
+                step="5"
+                value={editingService?.durationMin ?? 30}
+                onChange={(e) =>
+                  setEditingService((prev) =>
+                    prev ? { ...prev, durationMin: parseInt(e.target.value) || 30 } : null,
+                  )
+                }
+                required
+              />
+            </Field>
+          </div>
+
+          <div className="modal-form__row">
+            <Field label={t('admin.bufferBefore')}>
+              <Input
+                type="number"
+                min="0"
+                step="5"
+                value={editingService?.bufferBeforeMin ?? 0}
+                onChange={(e) =>
+                  setEditingService((prev) =>
+                    prev ? { ...prev, bufferBeforeMin: parseInt(e.target.value) || 0 } : null,
+                  )
+                }
+              />
+            </Field>
+            <Field label={t('admin.bufferAfter')}>
+              <Input
+                type="number"
+                min="0"
+                step="5"
+                value={editingService?.bufferAfterMin ?? 0}
+                onChange={(e) =>
+                  setEditingService((prev) =>
+                    prev ? { ...prev, bufferAfterMin: parseInt(e.target.value) || 0 } : null,
+                  )
+                }
+              />
+            </Field>
+          </div>
+
+          <Field label={t('admin.description')}>
+            <Input
+              value={editingService?.description ?? ''}
+              onChange={(e) =>
+                setEditingService((prev) => (prev ? { ...prev, description: e.target.value } : null))
+              }
+            />
+          </Field>
+
+          <button type="submit" hidden />
+        </form>
+      </Modal>
     </section>
   )
 }

@@ -30,6 +30,9 @@ import type {
   WeekHours,
   WorkingHour,
   ClosedDate,
+  PublicQueue,
+  TurnStatus,
+  TimeOffRow,
 } from '../domain'
 
 /* ------------------------------------------------------------------ *
@@ -376,15 +379,17 @@ export const supabaseAdapter: DataAdapter = {
           newStaffId?: string
         },
     startsAt?: Date,
-    _staffId?: string,
+    staffId?: string,
     _oldCode?: string,
   ): Promise<AgendaItem | Booking> {
     const code = typeof codeOrInput === 'string' ? codeOrInput : codeOrInput.code
     const nextStartsAt = typeof codeOrInput === 'string' ? startsAt! : codeOrInput.newStartsAt
+    const targetStaff = typeof codeOrInput === 'string' ? staffId ?? null : codeOrInput.newStaffId ?? null
     return toAgendaItem(
       await rpc('reschedule_by_code', {
         p_code: code,
         p_starts_at: nextStartsAt.toISOString(),
+        p_staff_id: targetStaff,
       }),
     )
   },
@@ -801,6 +806,40 @@ export const supabaseAdapter: DataAdapter = {
 
   async deleteClosedDate(tenantId: string, day: string): Promise<unknown> {
     return await rpc('delete_closed_date', { p_tenant_id: tenantId, p_day: day })
+  },
+
+  async queuePublic(slug: string, day?: string | null): Promise<PublicQueue> {
+    return (await rpc('queue_public', { p_slug: slug, p_day: day ?? null })) as PublicQueue
+  },
+
+  async turnStatus(code: string): Promise<TurnStatus> {
+    return (await rpc('turn_status', { p_code: code })) as TurnStatus
+  },
+
+  async listTimeOff(tenantId: string): Promise<TimeOffRow[]> {
+    return ((await rpc('list_time_off', { p_tenant_id: tenantId })) ?? []) as TimeOffRow[]
+  },
+
+  async upsertTimeOff(input: {
+    tenantId: string
+    id?: string | null
+    staffId?: string | null
+    startsAt: Date
+    endsAt: Date
+    reason?: string | null
+  }): Promise<TimeOffRow> {
+    return (await rpc('upsert_time_off', {
+      p_tenant_id: input.tenantId,
+      p_id: input.id ?? null,
+      p_staff_id: input.staffId ?? null,
+      p_starts_at: input.startsAt.toISOString(),
+      p_ends_at: input.endsAt.toISOString(),
+      p_reason: input.reason ?? null,
+    })) as TimeOffRow
+  },
+
+  async deleteTimeOff(tenantId: string, id: string): Promise<void> {
+    await rpc('delete_time_off', { p_tenant_id: tenantId, p_id: id })
   },
 
   async signIn(email: string, password: string): Promise<Session> {

@@ -103,6 +103,19 @@ export function useBookingFlow() {
     [draft, bundle.settings.requireEmail],
   )
 
+  const blockingReason: 'fullName' | 'phone' | 'email' | 'notes' | 'slot' | 'hold' | null =
+    fieldErrors.fullName
+      ? 'fullName'
+      : fieldErrors.phone
+        ? 'phone'
+        : fieldErrors.email
+          ? 'email'
+          : fieldErrors.notes
+            ? 'notes'
+            : !slot
+              ? 'slot'
+              : null
+
   const submit = useCallback(async () => {
     if (!holdApi.hold || !isClean(fieldErrors)) return
     setSubmitting(true)
@@ -131,6 +144,33 @@ export function useBookingFlow() {
       setSubmitting(false)
     }
   }, [holdApi, fieldErrors, draft, locale])
+
+  const attemptSubmit = useCallback(async (): Promise<
+    | { ok: true }
+    | {
+        ok: false
+        reason: NonNullable<typeof blockingReason> | 'expired' | 'error'
+        message?: string
+      }
+  > => {
+    if (submitting) return { ok: false, reason: 'error' }
+    if (blockingReason) return { ok: false, reason: blockingReason }
+
+    try {
+      if (!holdApi.hold && slot && serviceId) {
+        await holdApi.acquire(serviceId, slot.staffId, slot.start)
+      }
+      if (!holdApi.hold) return { ok: false, reason: 'expired' }
+      await submit()
+      return { ok: true }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      if (message.includes('hold_expired') || message.includes('hold_already_used')) {
+        return { ok: false, reason: 'expired', message }
+      }
+      return { ok: false, reason: 'error', message }
+    }
+  }, [submitting, blockingReason, holdApi, slot, serviceId, submit])
 
   const back = useCallback(() => {
     const i = BOOKING_STEPS.indexOf(step)
@@ -168,6 +208,8 @@ export function useBookingFlow() {
     setDraft,
     fieldErrors,
     canSubmit: isClean(fieldErrors) && Boolean(holdApi.hold) && !submitting,
+    blockingReason,
+    attemptSubmit,
     submitting,
     error,
     result,

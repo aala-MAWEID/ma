@@ -1,6 +1,7 @@
 import { Link, useParams } from 'react-router-dom'
-import { Button, Spinner } from '@/components/ui'
+import { Spinner } from '@/components/ui'
 import { StatusPill } from '@/components/shared/StatusPill'
+import { TurnTracker } from '@/components/booking/TurnTracker'
 import { data } from '@/data'
 import { useAsync } from '@/hooks'
 import { useLocale } from '@/contexts/LocaleContext'
@@ -51,6 +52,8 @@ export default function Confirm() {
         </h1>
 
         <StatusPill status={booking.status} />
+
+        <TurnTracker code={booking.code} />
 
         <dl className="confirm__list">
           <div>

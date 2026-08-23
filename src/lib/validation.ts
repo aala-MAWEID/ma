@@ -13,47 +13,50 @@ export interface CustomerErrors {
 }
 
 /**
- * Accepts Moroccan numbers in multiple popular formats:
- *   - 06 12 80 69 32 / 07 12 34 56 78 / 05 22 33 44 55
- *   - +212 6 12 80 69 32
- *   - 00212 6 12 80 69 32
- *   - 212 6 12 80 69 32
- * Returns normalized E.164: e.g. +212612806932 or null if invalid.
+ * يحوّل أي مدخل معقول إلى E.164، ويرجع null إن كان مستحيلاً.
+ * يقبل: 0667411987 · 06 67 41 19 87 · +212667411987 · 00212667411987 · 212667411987
  */
-export function normalizePhone(raw: string): string | null {
-  if (!raw) return null
-  const cleaned = raw.replace(/[\s\-().]/g, '')
-  if (!cleaned) return null
+export function normalizePhone(raw: string | null | undefined): string | null {
+  const trimmed = (raw ?? '').trim()
+  if (!trimmed) return null
 
-  // 00212...
-  if (cleaned.startsWith('00212')) {
-    const rest = cleaned.slice(5)
-    if (/^[567]\d{8}$/.test(rest)) return `+212${rest}`
+  const plus = trimmed.startsWith('+')
+  let digits = trimmed.replace(/[^0-9]/g, '')
+  if (!digits) return null
+
+  // 00 الدولية → +
+  if (digits.startsWith('00')) digits = digits.slice(2)
+
+  // محلي مغربي: 10 أرقام تبدأ بـ 05/06/07
+  if (!plus && /^0[567][0-9]{8}$/.test(digits)) {
+    return '+212' + digits.slice(1)
   }
-
-  // +212...
-  if (cleaned.startsWith('+212')) {
-    const rest = cleaned.slice(4)
-    if (/^[567]\d{8}$/.test(rest)) return `+212${rest}`
+  // مكتوب بلا الصفر: 9 أرقام تبدأ بـ 5/6/7
+  if (!plus && /^[567][0-9]{8}$/.test(digits)) {
+    return '+212' + digits
   }
-
-  // 212...
-  if (cleaned.startsWith('212')) {
-    const rest = cleaned.slice(3)
-    if (/^[567]\d{8}$/.test(rest)) return `+212${rest}`
+  // مغربي برمز الدولة
+  if (/^212[567][0-9]{8}$/.test(digits)) {
+    return '+' + digits
   }
-
-  // Local starting with 0: 05, 06, 07
-  if (/^0[567]\d{8}$/.test(cleaned)) {
-    return `+212${cleaned.slice(1)}`
+  // أي رقم دولي مكتوب بـ + وطوله معقول (نفس قيد قاعدة البيانات: ^\+[1-9][0-9]{7,14}$)
+  if (plus && /^[1-9][0-9]{7,14}$/.test(digits)) {
+    return '+' + digits
   }
-
-  // Any international general fallback (+ followed by 8-15 digits)
-  if (/^\+\d{8,15}$/.test(cleaned)) {
-    return cleaned
-  }
-
   return null
+}
+
+export type PhoneProblem = 'empty' | 'tooShort' | 'tooLong' | 'badPrefix' | null
+
+/** يشرح لماذا رُفِض الرقم، لأن «رقم غير صحيح» وحده لا يكفي. */
+export function phoneProblem(raw: string | null | undefined): PhoneProblem {
+  const digits = (raw ?? '').replace(/[^0-9]/g, '')
+  if (!digits) return 'empty'
+  if (normalizePhone(raw)) return null
+  if (digits.length < 9) return 'tooShort'
+  if (digits.length > 15) return 'tooLong'
+  if (/^0[0-9]{10,}$/.test(digits)) return 'tooLong'
+  return 'badPrefix'
 }
 
 export function validateCustomer(

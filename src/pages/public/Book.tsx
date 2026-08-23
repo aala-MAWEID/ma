@@ -11,11 +11,13 @@ import { Summary } from '@/components/booking/Summary'
 import { useBookingFlow, useAvailability } from '@/hooks'
 import { useLocale } from '@/contexts/LocaleContext'
 import { useTenant, useTenantBundle } from '@/contexts/TenantContext'
+import { useToast } from '@/contexts/ToastContext'
 import { BOOKING_STEPS } from '@/config/constants'
 import { errorKey } from '@/data/errors'
 
 export default function Book() {
   const { t } = useLocale()
+  const toast = useToast()
   const { reload } = useTenant()
   const bundle = useTenantBundle()
   const navigate = useNavigate()
@@ -65,11 +67,22 @@ export default function Book() {
   const selectedStaff =
     bundle.staff.find((s) => s.id === (flow.slot?.staffId ?? flow.staffId)) ?? null
 
-  const handleFormSubmit = () => {
+  const handleFormSubmit = async () => {
     setShowFormErrors(true)
-    if (flow.canSubmit) {
-      void flow.submit()
+    const res = await flow.attemptSubmit()
+    if (res.ok) return
+
+    if (res.reason === 'expired') {
+      toast.warn(t('book.holdExpiredPickAgain'))
+      flow.setStep('time')
+      return
     }
+    if (res.reason === 'error') {
+      toast.error(res.message || t('common.error'))
+      return
+    }
+    toast.error(t('form.fixFields'))
+    document.getElementById(res.reason)?.focus()
   }
 
   return (
@@ -139,6 +152,21 @@ export default function Book() {
           {flow.step === 'details' && (
             <section>
               <h1 className="section__title">{t('booking.yourDetails')}</h1>
+
+              {flow.hold.expired && (
+                <div className="alert alert--err" style={{ marginBlockEnd: 16 }}>
+                  <span>{t('book.holdExpiredPickAgain')}</span>
+                  <button
+                    type="button"
+                    className="btn btn--sm btn--outline"
+                    onClick={() => flow.setStep('time')}
+                    style={{ marginInlineStart: 12 }}
+                  >
+                    {t('booking.chooseTime')}
+                  </button>
+                </div>
+              )}
+
               {flow.hold.hold && (
                 <HoldTimer
                   remainingMs={flow.hold.remainingMs}
@@ -153,17 +181,25 @@ export default function Book() {
                 requireEmail={Boolean(bundle.settings.requireEmail)}
                 showErrors={showFormErrors}
               />
-              <div className="booking__actions">
-                <Button variant="outline" onClick={flow.back} disabled={Boolean(flow.submitting)}>
-                  {t('action.back')}
-                </Button>
-                <Button
-                  onClick={handleFormSubmit}
-                  disabled={!flow.canSubmit}
-                  loading={flow.submitting}
-                >
-                  {t('action.confirm')}
-                </Button>
+              <div className="booking__actions" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
+                <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+                  <Button variant="outline" onClick={flow.back} disabled={Boolean(flow.submitting)}>
+                    {t('action.back')}
+                  </Button>
+                  <Button
+                    onClick={handleFormSubmit}
+                    disabled={Boolean(flow.submitting)}
+                    loading={flow.submitting}
+                  >
+                    {t('action.confirm')}
+                  </Button>
+                </div>
+
+                {flow.blockingReason ? (
+                  <p className="modal-form__hint" role="status" style={{ marginBlockStart: 8, textAlign: 'end' }}>
+                    {t('form.stillNeeded')} {t('field.' + (flow.blockingReason === 'fullName' ? 'name' : flow.blockingReason))}
+                  </p>
+                ) : null}
               </div>
             </section>
           )}

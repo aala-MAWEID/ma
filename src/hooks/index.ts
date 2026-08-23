@@ -1,11 +1,4 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-} from 'react'
+import { useEffect, useState } from 'react'
 import type { TenantBundle } from '@/data'
 import { minutesOfDay, todayKey, weekdayOf } from '@/lib/time'
 import { windowsFor } from '@/lib/availability'
@@ -16,6 +9,7 @@ export { useBookingFlow } from '@/hooks/useBookingFlow'
 export { useHold } from '@/hooks/useHold'
 export { useAdminCalendar } from '@/hooks/useAdminCalendar'
 export { useDragBooking } from '@/hooks/useDragBooking'
+export { useTurnStatus } from '@/hooks/useTurnStatus'
 
 /** Re-render on an interval. Used by the hold countdown and the now-line. */
 export function useTick(ms: number, enabled = true): number {
@@ -68,49 +62,15 @@ export function useEscape(onEscape: () => void, active = true): void {
   }, [onEscape, active])
 }
 
-// ---------------------------------------------------------------------------
-// Toasts
-// ---------------------------------------------------------------------------
-
-export interface Toast {
-  id: number
-  message: string
-  tone: 'ok' | 'err' | 'info'
-}
-
-interface ToastValue {
-  toasts: Toast[]
-  push: (message: string, tone?: Toast['tone']) => void
-  dismiss: (id: number) => void
-}
-
-export const ToastContext = createContext<ToastValue | null>(null)
-
-export function useToastState(): ToastValue {
-  const [toasts, setToasts] = useState<Toast[]>([])
-  const next = useRef(1)
-
-  const dismiss = useCallback((id: number) => {
-    setToasts((list) => list.filter((t) => t.id !== id))
-  }, [])
-
-  const push = useCallback(
-    (message: string, tone: Toast['tone'] = 'info') => {
-      const id = next.current++
-      setToasts((list) => [...list, { id, message, tone }])
-      window.setTimeout(() => dismiss(id), 4200)
-    },
-    [dismiss],
-  )
-
-  return { toasts, push, dismiss }
-}
-
-export function useToast(): ToastValue {
-  const ctx = useContext(ToastContext)
-  if (!ctx) throw new Error('useToast must be used inside <ToastProvider>')
-  return ctx
-}
+// ---- التوست: مصدر واحد فقط (contexts/ToastContext) ----
+// كان هنا سياق ثانٍ لا يزوّده أحد، وهو سبب انهيار /admin/requests.
+export {
+  ToastContext,
+  ToastProvider,
+  useToast,
+  useOptionalToast,
+} from '@/contexts/ToastContext'
+export type { Toast, ToastApi, ToastTone, ToastToneInput } from '@/contexts/ToastContext'
 
 /** Which working windows apply today, for the calendar background. */
 export function useDayWindows(bundle: TenantBundle | null, day: string, staffId: string) {

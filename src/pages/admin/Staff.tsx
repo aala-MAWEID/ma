@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Button, EmptyState, Field, Input, Spinner } from '@/components/ui'
+import { Button, EmptyState, Field, IconButton, Input, Modal, Spinner } from '@/components/ui'
 import { data } from '@/data'
 import { useLocale } from '@/contexts/LocaleContext'
 import { useTenantBundle, useTenant } from '@/contexts/TenantContext'
@@ -81,8 +81,12 @@ export default function StaffPage() {
     setError(null)
   }
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const closeEdit = () => {
+    setEditingStaff(null)
+    setError(null)
+  }
+
+  const handleSave = async () => {
     if (!editingStaff?.displayName?.trim()) {
       setError(t('error.invalid_name'))
       return
@@ -223,14 +227,13 @@ export default function StaffPage() {
                       ↓
                     </Button>
                   </div>
-                  <div className="flex gap-1">
-                    <Button
-                      size="sm"
-                      variant="outline"
+                  <div className="row-actions">
+                    <IconButton
+                      icon="edit"
+                      label={t('common.edit')}
+                      showLabel
                       onClick={() => openEdit(st)}
-                    >
-                      {t('common.edit')}
-                    </Button>
+                    />
                     <Button
                       size="sm"
                       variant="quiet"
@@ -238,13 +241,12 @@ export default function StaffPage() {
                     >
                       {st.isActive ? t('common.deactivate') : t('common.activate')}
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="quiet"
+                    <IconButton
+                      icon="trash"
+                      tone="danger"
+                      label={t('common.delete')}
                       onClick={() => handleDelete(st)}
-                    >
-                      {t('common.delete')}
-                    </Button>
+                    />
                   </div>
                 </div>
               )}
@@ -253,100 +255,106 @@ export default function StaffPage() {
         </div>
       )}
 
-      {editingStaff && (
-        <div className="modal-backdrop" onClick={() => setEditingStaff(null)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 500 }}>
-            <h2>{editingStaff.id ? t('common.edit') : t('admin.addStaff')}</h2>
-            <form onSubmit={handleSave} className="modal-form">
-              {error && <div className="alert alert--err">{error}</div>}
+      <Modal
+        open={Boolean(editingStaff)}
+        onClose={closeEdit}
+        title={editingStaff?.id ? t('admin.editStaff') : t('admin.addStaff')}
+        footer={
+          <>
+            <Button variant="quiet" onClick={closeEdit} disabled={busy}>
+              {t('common.cancel')}
+            </Button>
+            <Button variant="primary" onClick={() => void handleSave()} loading={busy}>
+              {t('common.save')}
+            </Button>
+          </>
+        }
+      >
+        <form
+          className="modal-form"
+          onSubmit={(e) => {
+            e.preventDefault()
+            void handleSave()
+          }}
+        >
+          {error && <div className="alert alert--err">{error}</div>}
 
-              <Field label={t('admin.staffName')}>
-                <Input
-                  value={editingStaff.displayName ?? ''}
-                  onChange={(e) =>
-                    setEditingStaff({ ...editingStaff, displayName: e.target.value })
-                  }
-                  required
-                />
-              </Field>
+          <Field label={t('admin.staffName')}>
+            <Input
+              value={editingStaff?.displayName ?? ''}
+              onChange={(e) =>
+                setEditingStaff((prev) => (prev ? { ...prev, displayName: e.target.value } : null))
+              }
+              required
+            />
+          </Field>
 
-              <div className="grid grid-cols-2 gap-3">
-                <Field label={t('admin.staffTitle')}>
-                  <Input
-                    value={editingStaff.title ?? ''}
-                    onChange={(e) =>
-                      setEditingStaff({ ...editingStaff, title: e.target.value })
-                    }
-                  />
-                </Field>
-                <Field label={t('admin.staffTitleFr')}>
-                  <Input
-                    value={editingStaff.titleFr ?? ''}
-                    onChange={(e) =>
-                      setEditingStaff({ ...editingStaff, titleFr: e.target.value })
-                    }
-                    dir="ltr"
-                  />
-                </Field>
-              </div>
-
-              <Field label={t('admin.color')}>
-                <div className="flex gap-2 flex-wrap mb-2">
-                  {PRESET_COLORS.map((c) => (
-                    <button
-                      key={c}
-                      type="button"
-                      className={`w-8 h-8 rounded-full border-2 transition-all ${
-                        editingStaff.color === c ? 'scale-110 border-black' : 'border-transparent'
-                      }`}
-                      style={{ backgroundColor: c }}
-                      onClick={() => setEditingStaff({ ...editingStaff, color: c })}
-                    />
-                  ))}
-                </div>
-              </Field>
-
-              <Field label={t('admin.linkedServices')}>
-                {allServices.length === 0 ? (
-                  <p className="text-sm opacity-70">{t('admin.noServicesYet')}</p>
-                ) : (
-                  <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto p-2 border rounded-lg">
-                    {allServices.map((svc) => (
-                      <label key={svc.id} className="flex items-center gap-2 text-sm cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={selectedServiceIds.includes(svc.id)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setSelectedServiceIds([...selectedServiceIds, svc.id])
-                            } else {
-                              setSelectedServiceIds(selectedServiceIds.filter((id) => id !== svc.id))
-                            }
-                          }}
-                        />
-                        <span className="truncate">{svc.name}</span>
-                      </label>
-                    ))}
-                  </div>
-                )}
-              </Field>
-
-              <div className="modal-actions">
-                <Button type="submit" loading={busy} variant="primary">
-                  {t('common.save')}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setEditingStaff(null)}
-                >
-                  {t('common.cancel')}
-                </Button>
-              </div>
-            </form>
+          <div className="modal-form__row">
+            <Field label={t('admin.staffTitle')}>
+              <Input
+                value={editingStaff?.title ?? ''}
+                onChange={(e) =>
+                  setEditingStaff((prev) => (prev ? { ...prev, title: e.target.value } : null))
+                }
+              />
+            </Field>
+            <Field label={t('admin.staffTitleFr')}>
+              <Input
+                value={editingStaff?.titleFr ?? ''}
+                onChange={(e) =>
+                  setEditingStaff((prev) => (prev ? { ...prev, titleFr: e.target.value } : null))
+                }
+                dir="ltr"
+              />
+            </Field>
           </div>
-        </div>
-      )}
+
+          <Field label={t('admin.color')}>
+            <div className="color-swatches" role="group" aria-label={t('admin.color')}>
+              {PRESET_COLORS.map((hex) => (
+                <button
+                  key={hex}
+                  type="button"
+                  className="color-swatch"
+                  style={{ backgroundColor: hex }}
+                  aria-label={hex}
+                  aria-pressed={editingStaff?.color === hex}
+                  onClick={() =>
+                    setEditingStaff((prev) => (prev ? { ...prev, color: hex } : null))
+                  }
+                />
+              ))}
+            </div>
+          </Field>
+
+          <Field label={t('admin.linkedServices')}>
+            {allServices.length === 0 ? (
+              <p className="modal-form__hint">{t('admin.noServicesYet')}</p>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 8, maxHeight: 160, overflowY: 'auto', padding: 8, border: '1px solid var(--mw-line)', borderRadius: 'var(--r-md)' }}>
+                {allServices.map((svc) => (
+                  <label key={svc.id} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={selectedServiceIds.includes(svc.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedServiceIds([...selectedServiceIds, svc.id])
+                        } else {
+                          setSelectedServiceIds(selectedServiceIds.filter((id) => id !== svc.id))
+                        }
+                      }}
+                    />
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{svc.name}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+          </Field>
+
+          <button type="submit" hidden />
+        </form>
+      </Modal>
     </section>
   )
 }

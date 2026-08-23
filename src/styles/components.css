@@ -36,3 +36,159 @@
 .auth-card__title { margin: 0; font-size: 1.25rem; }
 .auth-card__subtitle { margin: 0; font-size: .9rem; opacity: .75; }
 
+/* ============ نوافذ وأزرار التعديل — V6 ============ */
+
+.scrim { animation: scrim-in 140ms ease-out; }
+@keyframes scrim-in { from { opacity: 0; } }
+
+.modal { animation: modal-in 190ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+@keyframes modal-in {
+  from { opacity: 0; transform: translate(-50%, -46%) scale(0.97); }
+}
+[dir='rtl'] .modal { animation-name: modal-in-rtl; }
+@keyframes modal-in-rtl {
+  from { opacity: 0; transform: translate(50%, -46%) scale(0.97); }
+}
+
+.modal--wide { inline-size: min(720px, calc(100% - var(--space-4) * 2)); }
+.modal__title { font-size: var(--text-lg); font-weight: 650; margin: 0; }
+.modal__sub { color: var(--mw-muted); font-size: var(--text-sm); margin-block-start: 2px; }
+
+.modal-form { display: grid; gap: var(--space-4); }
+.modal-form__row {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+}
+.modal-form__hint { color: var(--mw-muted); font-size: var(--text-sm); }
+.modal-form__sep { border: 0; border-block-start: 1px solid var(--mw-line); margin: 0; }
+
+.color-swatches { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.color-swatch {
+  inline-size: 30px;
+  block-size: 30px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.12);
+  cursor: pointer;
+  padding: 0;
+  transition: transform 140ms ease, border-color 140ms ease;
+}
+.color-swatch:hover { transform: scale(1.08); }
+.color-swatch[aria-pressed='true'] { border-color: var(--mw-ink); transform: scale(1.12); }
+.color-swatch:focus-visible { outline: 2px solid var(--mw-brand); outline-offset: 2px; }
+
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-inline-size: 34px;
+  block-size: 34px;
+  padding-inline: 10px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--mw-line);
+  background: var(--mw-surface);
+  color: var(--mw-ink);
+  font-size: var(--text-sm);
+  font-weight: 550;
+  cursor: pointer;
+  transition: background 140ms ease, border-color 140ms ease, transform 140ms ease;
+}
+.btn-icon:hover { background: var(--mw-surface-2, #f5f5f5); transform: translateY(-1px); }
+.btn-icon:active { transform: translateY(0); }
+.btn-icon:focus-visible { outline: 2px solid var(--mw-brand); outline-offset: 2px; }
+.btn-icon[disabled] { opacity: 0.5; cursor: not-allowed; transform: none; }
+.btn-icon--danger { color: var(--mw-err); }
+.btn-icon__svg { inline-size: 16px; block-size: 16px; }
+
+.row-actions { display: inline-flex; gap: var(--space-2); align-items: center; }
+
+/* ============ متتبع الدور للزبون — V6 ============ */
+.turn-tracker {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border-radius: var(--r-lg);
+  background: var(--mw-surface);
+  border: 1px solid var(--mw-line);
+  box-shadow: var(--shadow-sm);
+  margin-block-end: var(--space-4);
+  transition: border-color 160ms ease, background 160ms ease;
+}
+
+.turn-tracker--loading {
+  color: var(--mw-muted);
+  font-size: var(--text-sm);
+  text-align: center;
+  padding: var(--space-3);
+}
+
+.turn-tracker--urgent {
+  border-color: var(--mw-brand);
+  background: color-mix(in srgb, var(--mw-brand) 6%, var(--mw-surface));
+}
+
+.turn-tracker__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.turn-tracker__dot {
+  inline-size: 8px;
+  block-size: 8px;
+  border-radius: 50%;
+  background: var(--mw-brand);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--mw-brand) 25%, transparent);
+  animation: pulse-dot 1.8s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.3); opacity: 0.6; }
+}
+
+.turn-tracker__title {
+  font-size: var(--text-md);
+  font-weight: 650;
+  color: var(--mw-ink);
+}
+
+.turn-tracker__body {
+  display: flex;
+  gap: var(--space-6);
+  align-items: baseline;
+  padding-block: var(--space-1);
+}
+
+.turn-tracker__metric {
+  display: flex;
+  flex-direction: column;
+}
+
+.turn-tracker__num {
+  font-size: 1.75rem;
+  font-weight: 750;
+  line-height: 1.1;
+  color: var(--mw-brand);
+  font-feature-settings: 'tnum';
+}
+
+.turn-tracker__lbl {
+  font-size: var(--text-xs);
+  color: var(--mw-muted);
+  margin-block-start: 2px;
+}
+
+.turn-tracker__hint {
+  font-size: var(--text-sm);
+  color: var(--mw-muted);
+  margin: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scrim, .modal { animation: none; }
+  .btn-icon:hover, .color-swatch:hover { transform: none; }
+  .turn-tracker__dot { animation: none; }
+}

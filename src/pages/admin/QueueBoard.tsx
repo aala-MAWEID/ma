@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Button, Field, Input, Select, Spinner } from '@/components/ui'
+import { Button, Field, Input, Modal, Select, Spinner } from '@/components/ui'
 import { data } from '@/data'
 import { useLocale } from '@/contexts/LocaleContext'
 import { useTenantBundle } from '@/contexts/TenantContext'
@@ -358,78 +358,76 @@ export default function QueueBoard() {
       </div>
 
       {/* Add Walk-in Modal */}
-      {showAddModal && (
-        <div className="modal-backdrop" onClick={() => setShowAddModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2>{t('queue.addWalkIn')}</h2>
-            <form onSubmit={handleAddWalkIn} className="modal-form">
-              {formError && <div className="alert alert--err">{formError}</div>}
+      <Modal
+        open={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        title={t('queue.addWalkIn')}
+        footer={
+          <>
+            <Button variant="quiet" onClick={() => setShowAddModal(false)} disabled={busyAction === 'add-walkin'}>
+              {t('action.cancel')}
+            </Button>
+            <Button variant="primary" onClick={(e) => void handleAddWalkIn(e)} loading={busyAction === 'add-walkin'}>
+              {t('action.add')}
+            </Button>
+          </>
+        }
+      >
+        <form onSubmit={handleAddWalkIn} className="modal-form">
+          {formError && <div className="alert alert--err">{formError}</div>}
 
-              <Field label={t('field.fullName')}>
-                <Input
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder={t('field.fullName')}
-                  required
-                />
-              </Field>
+          <Field label={t('field.fullName')}>
+            <Input
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              placeholder={t('field.fullName')}
+              required
+            />
+          </Field>
 
-              <Field label={t('field.phone')}>
-                <Input
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  type="tel"
-                  dir="ltr"
-                  placeholder="0612345678"
-                  required
-                />
-              </Field>
+          <Field label={t('field.phone')}>
+            <Input
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              type="tel"
+              dir="ltr"
+              placeholder="0612345678"
+              required
+            />
+          </Field>
 
-              <Field label={t('step.service')}>
-                <Select value={serviceId} onChange={(e) => setServiceId(e.target.value)}>
-                  {bundle.services.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name} ({s.durationMin} {t('common.minutes')} -{' '}
-                      {formatMoney(s.priceCentimes, bundle.tenant.currency, locale)})
-                    </option>
-                  ))}
-                </Select>
-              </Field>
+          <Field label={t('step.service')}>
+            <Select value={serviceId} onChange={(e) => setServiceId(e.target.value)}>
+              {bundle.services.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name} ({s.durationMin} {t('common.minutes')} -{' '}
+                  {formatMoney(s.priceCentimes, bundle.tenant.currency, locale)})
+                </option>
+              ))}
+            </Select>
+          </Field>
 
-              <Field label={t('step.staff')}>
-                <Select value={staffId} onChange={(e) => setStaffId(e.target.value)}>
-                  {bundle.staff.map((st) => (
-                    <option key={st.id} value={st.id}>
-                      {st.displayName}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
+          <Field label={t('step.staff')}>
+            <Select value={staffId} onChange={(e) => setStaffId(e.target.value)}>
+              {bundle.staff.map((st) => (
+                <option key={st.id} value={st.id}>
+                  {st.displayName}
+                </option>
+              ))}
+            </Select>
+          </Field>
 
-              <Field label={t('field.notes')}>
-                <Input
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder={t('field.notesPlaceholder')}
-                />
-              </Field>
+          <Field label={t('field.notes')}>
+            <Input
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder={t('field.notesPlaceholder')}
+            />
+          </Field>
 
-              <div className="modal-actions">
-                <Button type="submit" loading={busyAction === 'add-walkin'} variant="primary">
-                  {t('action.add')}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setShowAddModal(false)}
-                >
-                  {t('action.cancel')}
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+          <button type="submit" hidden />
+        </form>
+      </Modal>
     </section>
   )
 }

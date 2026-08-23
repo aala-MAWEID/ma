@@ -19,6 +19,9 @@ import type {
   WeekHours,
   WorkingHour,
   ClosedDate,
+  PublicQueue,
+  TurnStatus,
+  TimeOffRow,
 } from './domain'
 
 export * from './domain'
@@ -43,6 +46,9 @@ export type {
   WeekHours,
   WorkingHour,
   ClosedDate,
+  PublicQueue,
+  TurnStatus,
+  TimeOffRow,
 }
 
 export type Decision = 'approve' | 'reject' | 'confirm' | 'decline' | 'complete' | 'no_show'
@@ -305,6 +311,22 @@ export interface DataAdapter {
   listClosedDates(tenantId: string): Promise<ClosedDate[]>
   upsertClosedDate(tenantId: string, day: string, label?: string | null): Promise<unknown>
   deleteClosedDate(tenantId: string, day: string): Promise<unknown>
+
+  /** لوحة الطابور للزائر غير المسجّل — أرقام فقط */
+  queuePublic(slug: string, day?: string | null): Promise<PublicQueue>
+  /** حالة دور صاحب الرمز */
+  turnStatus(code: string): Promise<TurnStatus>
+  /** إجازات وغياب الموظفين */
+  listTimeOff(tenantId: string): Promise<TimeOffRow[]>
+  upsertTimeOff(input: {
+    tenantId: string
+    id?: string | null
+    staffId?: string | null
+    startsAt: Date
+    endsAt: Date
+    reason?: string | null
+  }): Promise<TimeOffRow>
+  deleteTimeOff(tenantId: string, id: string): Promise<void>
 }
 
 /** Everything false. The safe default before whoami() has answered. */

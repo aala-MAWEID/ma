@@ -421,6 +421,8 @@ table,
 .toast--info { background: var(--mw-ink); color: #fff; }
 .toast--ok   { background: var(--mw-ok); color: #fff; }
 .toast--err  { background: var(--mw-err); color: #fff; }
+.toast--warn { background: var(--mw-warn, #B45309); color: #fff; }
+.toast { border: 0; font: inherit; text-align: start; cursor: pointer; }
 
 /* ---- Modal ---- */
 .modal {

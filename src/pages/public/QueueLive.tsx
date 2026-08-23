@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
-import { Button, Field, Input, Select, Spinner } from '@/components/ui'
+import { useParams } from 'react-router-dom'
+import { Button, Field, Input, Select, Spinner, Modal } from '@/components/ui'
 import { data } from '@/data'
 import { useLocale } from '@/contexts/LocaleContext'
 import { useTenant, useTenantBundle } from '@/contexts/TenantContext'
@@ -14,7 +14,6 @@ export default function QueueLive() {
   const { t, locale } = useLocale()
   const { reload } = useTenant()
   const bundle = useTenantBundle()
-  const { slug } = useParams()
   const toast = useToast()
 
   const [tickets, setTickets] = useState<QueueTicket[]>([])
@@ -56,7 +55,9 @@ export default function QueueLive() {
   }, [bundle.tenant.id])
 
   const serving = tickets.filter((t) => t.status === 'serving')
-  const waiting = tickets.filter((t) => t.status !== 'serving' && t.status !== 'completed' && t.status !== 'cancelled')
+  const waiting = tickets.filter(
+    (t) => t.status !== 'serving' && t.status !== 'completed' && t.status !== 'cancelled',
+  )
 
   const myTicket = myTicketId ? tickets.find((t) => t.id === myTicketId) : null
 
@@ -78,7 +79,7 @@ export default function QueueLive() {
       const b = await data.queueJoin(
         bundle.tenant.slug,
         serviceId,
-        staffId,
+        staffId || null,
         fullName.trim(),
         normPhone,
         notes.trim() || null,
@@ -211,80 +212,78 @@ export default function QueueLive() {
         </section>
       </div>
 
-      {showJoinModal && (
-        <div className="modal-backdrop" onClick={() => setShowJoinModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2>{t('queue.joinTitle')}</h2>
-            <p className="modal-desc">{t('queue.joinDesc')}</p>
+      <Modal
+        open={showJoinModal}
+        onClose={() => setShowJoinModal(false)}
+        title={t('queue.joinTitle')}
+      >
+        <p className="modal-desc" style={{ marginBlockEnd: 16 }}>{t('queue.joinDesc')}</p>
 
-            <form onSubmit={handleJoin} className="modal-form">
-              {joinError && <div className="alert alert--err">{joinError}</div>}
+        <form onSubmit={handleJoin} className="modal-form">
+          {joinError && <div className="alert alert--err">{joinError}</div>}
 
-              <Field label={t('field.fullName')}>
-                <Input
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder={t('field.fullName')}
-                  required
-                />
-              </Field>
+          <Field label={t('field.name')} required>
+            <Input
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              placeholder={t('field.name')}
+              required
+            />
+          </Field>
 
-              <Field label={t('field.phone')}>
-                <Input
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  type="tel"
-                  dir="ltr"
-                  placeholder="0612345678"
-                  required
-                />
-              </Field>
+          <Field label={t('field.phone')} required>
+            <Input
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              type="tel"
+              dir="ltr"
+              placeholder="0612345678"
+              required
+            />
+          </Field>
 
-              <Field label={t('step.service')}>
-                <Select value={serviceId} onChange={(e) => setServiceId(e.target.value)}>
-                  {bundle.services.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name} ({s.durationMin} {t('common.minutes')} -{' '}
-                      {formatMoney(s.priceCentimes, bundle.tenant.currency, locale)})
-                    </option>
-                  ))}
-                </Select>
-              </Field>
+          <Field label={t('step.service')}>
+            <Select value={serviceId} onChange={(e) => setServiceId(e.target.value)}>
+              {bundle.services.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name} ({s.durationMin} {t('common.minutes')} -{' '}
+                  {formatMoney(s.priceCentimes, bundle.tenant.currency, locale)})
+                </option>
+              ))}
+            </Select>
+          </Field>
 
-              <Field label={t('step.staff')}>
-                <Select value={staffId} onChange={(e) => setStaffId(e.target.value)}>
-                  {bundle.staff.map((st) => (
-                    <option key={st.id} value={st.id}>
-                      {st.displayName} {st.title ? `(${st.title})` : ''}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
+          <Field label={t('step.staff')}>
+            <Select value={staffId} onChange={(e) => setStaffId(e.target.value)}>
+              {bundle.staff.map((st) => (
+                <option key={st.id} value={st.id}>
+                  {st.displayName} {st.title ? `(${st.title})` : ''}
+                </option>
+              ))}
+            </Select>
+          </Field>
 
-              <Field label={t('field.notes')}>
-                <Input
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder={t('field.notesPlaceholder')}
-                />
-              </Field>
+          <Field label={t('field.notes')}>
+            <Input
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+            />
+          </Field>
 
-              <div className="modal-actions">
-                <Button type="submit" loading={joining} variant="primary">
-                  {t('queue.confirmJoin')}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setShowJoinModal(false)}
-                >
-                  {t('action.cancel')}
-                </Button>
-              </div>
-            </form>
+          <div className="modal-actions">
+            <Button type="submit" loading={joining} variant="primary">
+              {t('queue.confirmJoin')}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowJoinModal(false)}
+            >
+              {t('action.cancel')}
+            </Button>
           </div>
-        </div>
-      )}
+        </form>
+      </Modal>
     </div>
   )
 }
