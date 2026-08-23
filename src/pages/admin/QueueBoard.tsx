@@ -1,3 +1,4 @@
+import { PageHeader } from '@/components/shared/PageHeader'
 import { useEffect, useState } from 'react'
 import { Button, Field, Input, Modal, Select, Spinner } from '@/components/ui'
 import { data } from '@/data'
@@ -163,43 +164,7 @@ export default function QueueBoard() {
 
   return (
     <section className="admin-page admin-queue-board">
-      <header className="admin-page__head">
-        <div>
-          <h1 className="admin-page__title">{t('admin.queue')}</h1>
-          <p className="admin-page__subtitle">
-            {t('queue.boardSubtitle', { count: waitingTickets.length })}
-          </p>
-        </div>
-
-        <div className="admin-page__actions">
-          <Select
-            value={selectedStaffId}
-            onChange={(e) => setSelectedStaffId(e.target.value)}
-            className="w-auto"
-          >
-            <option value="all">{t('admin.allStaff')}</option>
-            {bundle.staff.map((st) => (
-              <option key={st.id} value={st.id}>
-                {st.displayName}
-              </option>
-            ))}
-          </Select>
-
-          {perms.reorder_queue && (
-            <Button
-              variant="primary"
-              loading={busyAction === 'next'}
-              onClick={() => handleNext(null, 'completed')}
-            >
-              ⚡ {t('queue.callNext')}
-            </Button>
-          )}
-
-          <Button variant="outline" onClick={() => setShowAddModal(true)}>
-            + {t('queue.addWalkIn')}
-          </Button>
-        </div>
-      </header>
+      <PageHeader title={t('admin.queue')} description={t('queue.boardSubtitle', { count: waitingTickets.length })} />
 
       {/* Serving Strip */}
       <div className="queue-board-serving-strip">

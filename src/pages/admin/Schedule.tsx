@@ -1,3 +1,4 @@
+import { PageHeader } from '@/components/shared/PageHeader'
 import { useCallback, useEffect, useState } from 'react'
 import { useLocale } from '@/contexts/LocaleContext'
 import { useTenantBundle } from '@/contexts/TenantContext'
@@ -76,20 +77,7 @@ export default function Schedule() {
 
   return (
     <section className="admin-page" dir="rtl">
-      <header className="admin-page__head">
-        <div>
-          <h1 className="admin-page__title">{t('admin.schedule')}</h1>
-          <p className="admin-page__subtitle">{t('admin.scheduleSubtitle')}</p>
-        </div>
-        <div className="admin-page__actions">
-          <Field label={t('admin.day')}>
-            <Input type="date" value={day} onChange={(e) => setDay(e.target.value)} />
-          </Field>
-          <Button variant="outline" onClick={() => load()}>
-            {t('common.refresh')}
-          </Button>
-        </div>
-      </header>
+      <PageHeader title={t('admin.schedule')} description={t('admin.scheduleSubtitle')} />
 
       {!rows ? (
         <div className="page-center">

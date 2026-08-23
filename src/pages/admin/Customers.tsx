@@ -1,3 +1,4 @@
+import { PageHeader } from '@/components/shared/PageHeader'
 import { useEffect, useState } from 'react'
 import { Button, Field, Input, Spinner, EmptyState } from '@/components/ui'
 import { data } from '@/data'
@@ -39,20 +40,7 @@ export default function Customers() {
 
   return (
     <section className="admin-page">
-      <header className="admin-page__head">
-        <div>
-          <h1 className="admin-page__title">{t('admin.customers')} ({customers.length})</h1>
-          <p className="admin-page__subtitle">{t('admin.customersSubtitle')}</p>
-        </div>
-        <div className="admin-page__actions">
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder={t('common.searchPlaceholder')}
-            className="w-64"
-          />
-        </div>
-      </header>
+      <PageHeader title={`${t('admin.customers')} (${customers.length})`} description={t('admin.customersSubtitle')} />
 
       {loading ? (
         <div className="page-center">

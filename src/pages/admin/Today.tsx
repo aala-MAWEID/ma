@@ -1,3 +1,4 @@
+import { PageHeader } from '@/components/shared/PageHeader'
 import { useState } from 'react'
 import { BookingDrawer } from '@/components/admin/BookingDrawer'
 import { StatusPill } from '@/components/shared/StatusPill'
@@ -19,9 +20,7 @@ export default function Today() {
 
   return (
     <section className="admin-page">
-      <header className="admin-page__head">
-        <h1>{t('admin.today')}</h1>
-      </header>
+      <PageHeader title={t('admin.today')} />
 
       <div className="stats">
         <Stat label={t('admin.statToday')} value={stats.value?.todayCount ?? '—'} />

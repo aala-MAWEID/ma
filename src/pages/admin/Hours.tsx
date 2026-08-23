@@ -1,3 +1,4 @@
+import { PageHeader } from '@/components/shared/PageHeader'
 import { useCallback, useEffect, useState } from 'react'
 import { useLocale } from '@/contexts/LocaleContext'
 import { useTenant, useTenantBundle } from '@/contexts/TenantContext'
@@ -158,17 +159,7 @@ export default function Hours() {
 
   return (
     <section className="admin-page" dir="rtl">
-      <header className="admin-page__head">
-        <div>
-          <h1 className="admin-page__title">{t('admin.hours')}</h1>
-          <p className="admin-page__subtitle">{t('admin.hoursSubtitle')}</p>
-        </div>
-        <div className="admin-page__actions">
-          <Button variant="primary" loading={busy} onClick={save}>
-            {t('common.save')}
-          </Button>
-        </div>
-      </header>
+      <PageHeader title={t('admin.hours')} description={t('admin.hoursSubtitle')} />
 
       <div style={{ display: 'grid', gap: 10 }}>
         {week.map((d) => (

@@ -99,7 +99,7 @@ export default function AdminShell() {
 
   return (
     <div className="admin" dir="rtl">
-      <AdminNav slug={slug} />
+      <AdminNav />
       <main className="admin__main">
         <Outlet />
       </main>

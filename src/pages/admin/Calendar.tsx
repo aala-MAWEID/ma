@@ -1,3 +1,4 @@
+import { PageHeader } from '@/components/shared/PageHeader'
 import { useState } from 'react'
 import { CalendarGrid } from '@/components/admin/CalendarGrid'
 import { BookingDrawer } from '@/components/admin/BookingDrawer'

@@ -15,6 +15,7 @@ import { useToast } from '@/contexts/ToastContext'
 import { BOOKING_STEPS } from '@/config/constants'
 import { errorKey } from '@/data/errors'
 
+import { PageHeader } from '@/components/shared/PageHeader'
 export default function Book() {
   const { t } = useLocale()
   const toast = useToast()
@@ -88,7 +89,14 @@ export default function Book() {
   }
 
   return (
-    <div className="wrap booking">
+    <>
+      <PageHeader
+        title={t(`step.${flow.step}`)}
+        description={bundle.tenant.name}
+        onBack={stepIndex > 0 && flow.step !== 'done' ? flow.back : undefined}
+        hideBack={stepIndex === 0 || flow.step === 'done'}
+      />
+      <div className="wrap booking">
       <ol className="steps" aria-label={t('nav.book')}>
         {BOOKING_STEPS.slice(0, 4).map((step, i) => (
           <li
@@ -185,13 +193,11 @@ export default function Book() {
               />
               <div className="booking__actions" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
                 <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
-                  <Button variant="outline" onClick={flow.back} disabled={Boolean(flow.submitting)}>
-                    {t('action.back')}
-                  </Button>
                   <Button
                     onClick={handleFormSubmit}
                     disabled={Boolean(flow.submitting)}
                     loading={flow.submitting}
+                    block
                   >
                     {t('action.confirm')}
                   </Button>
@@ -205,14 +211,6 @@ export default function Book() {
               </div>
             </section>
           )}
-
-          {flow.step !== 'details' && stepIndex > 0 && (
-            <div className="booking__actions">
-              <Button variant="outline" onClick={flow.back}>
-                {t('action.back')}
-              </Button>
-            </div>
-          )}
         </div>
 
         <Summary
@@ -224,5 +222,6 @@ export default function Book() {
         />
       </div>
     </div>
+    </>
   )
 }

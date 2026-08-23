@@ -1,3 +1,4 @@
+import { PageHeader } from '@/components/shared/PageHeader'
 import { useEffect, useState } from 'react'
 import { Button, EmptyState, Field, IconButton, Input, Modal, Spinner } from '@/components/ui'
 import { data } from '@/data'
@@ -165,19 +166,7 @@ export default function StaffPage() {
 
   return (
     <section className="admin-page" dir="rtl">
-      <header className="admin-page__head">
-        <div>
-          <h1 className="admin-page__title">{t('admin.staff')} ({staffList.length})</h1>
-          <p className="admin-page__subtitle">{t('admin.staffSubtitle')}</p>
-        </div>
-        {perms.edit_staff && (
-          <div className="admin-page__actions">
-            <Button variant="primary" onClick={openAdd}>
-              + {t('admin.addStaff')}
-            </Button>
-          </div>
-        )}
-      </header>
+      <PageHeader title={`${t('admin.staff')} (${staffList.length})`} description={t('admin.staffSubtitle')} />
 
       {loadingList ? (
         <div className="page-center">

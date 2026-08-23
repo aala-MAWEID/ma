@@ -1,3 +1,4 @@
+import { PageHeader } from '@/components/shared/PageHeader'
 import { useEffect, useState } from 'react'
 import { Button, EmptyState, Field, IconButton, Input, Modal, Spinner } from '@/components/ui'
 import { data } from '@/data'
@@ -159,19 +160,7 @@ export default function ServicesPage() {
 
   return (
     <section className="admin-page" dir="rtl">
-      <header className="admin-page__head">
-        <div>
-          <h1 className="admin-page__title">{t('admin.services')} ({servicesList.length})</h1>
-          <p className="admin-page__subtitle">{t('admin.servicesSubtitle')}</p>
-        </div>
-        {perms.edit_services && (
-          <div className="admin-page__actions">
-            <Button variant="primary" onClick={handleOpenAdd}>
-              + {t('admin.addService')}
-            </Button>
-          </div>
-        )}
-      </header>
+      <PageHeader title={`${t('admin.services')} (${servicesList.length})`} description={t('admin.servicesSubtitle')} />
 
       {loadingList ? (
         <div className="page-center">

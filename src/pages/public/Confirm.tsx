@@ -10,6 +10,7 @@ import { formatDateTime } from '@/lib/time'
 import { formatMoney } from '@/lib/money'
 import { errorKey } from '@/data/errors'
 
+import { PageHeader } from '@/components/shared/PageHeader'
 export default function Confirm() {
   const { t, locale } = useLocale()
   const bundle = useTenantBundle()
@@ -41,8 +42,10 @@ export default function Confirm() {
   const staff = bundle.staff.find((s) => s.id === booking.staffId)
 
   return (
-    <div className="wrap confirm">
-      <div className="confirm__card">
+    <>
+      <PageHeader title={t('nav.myBookings')} description={bundle.tenant.name} hideBack={true} />
+      <div className="wrap confirm">
+        <div className="confirm__card">
         <div className={confirmed ? 'confirm__icon is-ok' : 'confirm__icon is-wait'}>
           {confirmed ? '✓' : '⚑'}
         </div>
@@ -90,5 +93,6 @@ export default function Confirm() {
         </div>
       </div>
     </div>
+    </>
   )
 }

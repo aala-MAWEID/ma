@@ -1,3 +1,4 @@
+import { PageHeader } from '@/components/shared/PageHeader'
 import { useState } from 'react'
 import { Button, Field, Input, Select } from '@/components/ui'
 import { data } from '@/data'
@@ -40,12 +41,7 @@ export default function ProfilePage() {
 
   return (
     <section className="admin-page">
-      <header className="admin-page__head">
-        <div>
-          <h1 className="admin-page__title">{t('admin.profile')}</h1>
-          <p className="admin-page__subtitle">{t('admin.profileSubtitle')}</p>
-        </div>
-      </header>
+      <PageHeader title={t('admin.profile')} description={t('admin.profileSubtitle')} />
 
       <div className="max-w-md bg-surface border border-border rounded-xl p-6 shadow-sm">
         <form onSubmit={handleSave} className="space-y-4">

@@ -20,7 +20,7 @@
     inset-block-start: 0;
     z-index: 40;
     padding-block-start: var(--safe-t);
-    background: color-mix(in srgb, var(--surface) 92%, transparent);
+    background: color-mix(in srgb, var(--mw-surface) 92%, transparent);
     backdrop-filter: saturate(180%) blur(12px);
   }
   .site-head__inner {
@@ -41,9 +41,9 @@
     min-inline-size: var(--tap);
     min-block-size: var(--tap);
     padding: 0;
-    border: 1px solid var(--line);
+    border: 1px solid var(--mw-line);
     border-radius: 14px;
-    background: var(--surface);
+    background: var(--mw-surface);
     cursor: pointer;
   }
   .burger > span {
@@ -51,7 +51,7 @@
     inline-size: 20px;
     block-size: 2px;
     border-radius: 2px;
-    background: var(--ink);
+    background: var(--mw-ink);
   }
 
   /* الشعار: سطر واحد مع قطع أنيق بدل تكسّر الكلمات */
@@ -98,7 +98,7 @@
   }
   .sheet {
     inline-size: 100%;
-    background: var(--surface);
+    background: var(--mw-surface);
     border-start-start-radius: 22px;
     border-start-end-radius: 22px;
     padding: var(--space-3) var(--space-4);
@@ -114,7 +114,7 @@
     inline-size: 44px;
     block-size: 4px;
     border-radius: 999px;
-    background: var(--line);
+    background: var(--mw-line);
     margin: 0 auto var(--space-3);
   }
   .sheet__nav {
@@ -126,44 +126,40 @@
     align-items: center;
     min-block-size: 52px;
     padding-inline: var(--space-4);
-    border: 1px solid var(--line);
+    border: 1px solid var(--mw-line);
     border-radius: 14px;
     font-size: 16px;
     font-weight: 600;
-    color: var(--ink);
+    color: var(--mw-ink);
     text-decoration: none;
   }
   .sheet__link.active {
-    border-color: var(--brand);
-    color: var(--brand);
-    background: color-mix(in srgb, var(--brand) 8%, transparent);
+    border-color: var(--mw-brand);
+    color: var(--mw-brand);
+    background: color-mix(in srgb, var(--mw-brand) 8%, transparent);
   }
   .sheet__foot {
     display: grid;
     gap: var(--space-3);
     margin-block-start: var(--space-4);
     padding-block-start: var(--space-3);
-    border-block-start: 1px solid var(--line);
-  }
-  .sheet__langs {
-    display: flex;
-    gap: var(--space-2);
+    border-block-start: 1px solid var(--mw-line);
   }
   .chip {
     flex: 1 1 0;
     min-block-size: var(--tap);
-    border: 1px solid var(--line);
+    border: 1px solid var(--mw-line);
     border-radius: 999px;
     background: transparent;
     font-size: 15px;
     font-weight: 600;
-    color: var(--ink);
+    color: var(--mw-ink);
     cursor: pointer;
   }
   .chip.is-on {
-    border-color: var(--brand);
-    color: var(--brand);
-    background: color-mix(in srgb, var(--brand) 10%, transparent);
+    border-color: var(--mw-brand);
+    color: var(--mw-brand);
+    background: color-mix(in srgb, var(--mw-brand) 10%, transparent);
   }
 
   /* شريط تنقل سفلي مثل التطبيقات */
@@ -175,8 +171,8 @@
     display: grid;
     grid-auto-flow: column;
     grid-auto-columns: 1fr;
-    background: var(--surface);
-    border-block-start: 1px solid var(--line);
+    background: var(--mw-surface);
+    border-block-start: 1px solid var(--mw-line);
     padding-block-end: var(--safe-b);
   }
   .tabbar__item {
@@ -184,7 +180,7 @@
     place-items: center;
     min-block-size: var(--tabbar-h);
     padding: 6px 4px;
-    color: var(--muted);
+    color: var(--mw-ink-3);
     font-size: 12.5px;
     font-weight: 600;
     line-height: 1.15;
@@ -192,8 +188,8 @@
     text-decoration: none;
   }
   .tabbar__item.active {
-    color: var(--brand);
-    background: color-mix(in srgb, var(--brand) 6%, transparent);
+    color: var(--mw-brand);
+    background: color-mix(in srgb, var(--mw-brand) 6%, transparent);
   }
   .tabbar__label {
     display: block;
@@ -359,7 +355,7 @@ summary {
     position: sticky;
     inset-block-start: 56px;
     z-index: 20;
-    background: var(--surface);
+    background: var(--mw-surface);
     padding-block: var(--space-2);
   }
 
@@ -372,8 +368,8 @@ summary {
     display: flex;
     gap: var(--space-2);
     padding: var(--space-3);
-    background: color-mix(in srgb, var(--surface) 92%, transparent);
-    border-block-start: 1px solid var(--line);
+    background: color-mix(in srgb, var(--mw-surface) 92%, transparent);
+    border-block-start: 1px solid var(--mw-line);
     backdrop-filter: blur(10px);
   }
   .booking__actions .btn {
@@ -406,7 +402,7 @@ summary {
   .modal__foot {
     position: sticky;
     inset-block-end: 0;
-    background: var(--surface);
+    background: var(--mw-surface);
     padding-block-end: calc(var(--space-3) + var(--safe-b));
   }
   .modal__foot .btn {
@@ -435,14 +431,14 @@ summary {
     position: sticky;
     inset-block-start: 56px;
     z-index: 20;
-    background: var(--surface);
+    background: var(--mw-surface);
   }
   .admin-nav::-webkit-scrollbar { display: none; }
   .admin-nav a {
     flex: 0 0 auto;
     min-block-size: 40px;
     padding-inline: var(--space-3);
-    border: 1px solid var(--line);
+    border: 1px solid var(--mw-line);
     border-radius: 999px;
     font-size: 14px;
     white-space: nowrap;

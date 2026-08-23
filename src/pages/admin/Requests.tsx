@@ -1,3 +1,4 @@
+import { PageHeader } from '@/components/shared/PageHeader'
 import { useEffect, useState } from 'react'
 import type { FC } from 'react'
 import { RequestCard } from '@/components/admin/RequestCard'
@@ -45,12 +46,7 @@ export default function Requests() {
 
   return (
     <section className="admin-page">
-      <header className="admin-page__head">
-        <h1>
-          {t('admin.requests')} ({items.length})
-        </h1>
-      </header>
-
+      <PageHeader title={`${t('admin.requests')} (${items.length})`} />
       {loading ? (
         <Spinner size={24} />
       ) : items.length === 0 ? (

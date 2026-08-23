@@ -1,3 +1,4 @@
+import { PageHeader } from '@/components/shared/PageHeader'
 import { useEffect, useState } from 'react'
 import { Spinner } from '@/components/ui'
 import { data } from '@/data'
@@ -38,12 +39,7 @@ export default function StatsPage() {
 
   return (
     <section className="admin-page">
-      <header className="admin-page__head">
-        <div>
-          <h1 className="admin-page__title">{t('admin.stats')}</h1>
-          <p className="admin-page__subtitle">{t('admin.statsSubtitle')}</p>
-        </div>
-      </header>
+      <PageHeader title={t('admin.stats')} description={t('admin.statsSubtitle')} />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div className="stat-card p-5 bg-surface border border-border rounded-xl shadow-sm">

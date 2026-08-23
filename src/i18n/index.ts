@@ -39,6 +39,7 @@ export const ar = {
   'action.call': 'اتصال',
   'action.signIn': 'دخول',
   'action.signOut': 'خروج',
+  'action.confirmSignOut': 'هل أنت متأكد من تسجيل الخروج؟',
 
   'step.service': 'الخدمة',
   'step.staff': 'مع من؟',
@@ -411,6 +412,7 @@ export const fr: Record<TranslationKey, string> = {
   'action.call': 'Appeler',
   'action.signIn': 'Connexion',
   'action.signOut': 'Déconnexion',
+  'action.confirmSignOut': 'Êtes-vous sûr de vouloir vous déconnecter ?',
 
   'step.service': 'Service',
   'step.staff': 'Avec qui ?',

@@ -1,3 +1,4 @@
+import { PageHeader } from '@/components/shared/PageHeader'
 import { useState } from 'react'
 import { Button, Field, Input } from '@/components/ui'
 import { data } from '@/data'
@@ -61,12 +62,7 @@ export default function IdentityPage() {
 
   return (
     <section className="admin-page">
-      <header className="admin-page__head">
-        <div>
-          <h1 className="admin-page__title">{t('admin.identity')}</h1>
-          <p className="admin-page__subtitle">{t('admin.identitySubtitle')}</p>
-        </div>
-      </header>
+      <PageHeader title={t('admin.identity')} description={t('admin.identitySubtitle')} />
 
       <div className="max-w-2xl bg-surface border border-border rounded-xl p-6 shadow-sm">
         <form onSubmit={handleSave} className="space-y-4">

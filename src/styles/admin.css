@@ -634,3 +634,23 @@
     padding: var(--space-3);
   }
 }
+-e 
+.admin-head-mobile { display: none; }
+@media (max-width: 860px) {
+  .desktop-only { display: none !important; }
+  .admin-head-mobile {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: var(--mw-surface);
+    border-bottom: 1px solid var(--mw-line);
+    position: sticky;
+    top: 0;
+    z-index: 40;
+  }
+  .admin-head-mobile__title {
+    font-weight: 700;
+    font-size: 16px;
+  }
+}

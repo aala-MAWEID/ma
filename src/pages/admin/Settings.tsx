@@ -1,3 +1,4 @@
+import { PageHeader } from '@/components/shared/PageHeader'
 import { useState, type FormEvent } from 'react'
 import { Button, Field, Input, Select } from '@/components/ui'
 import { data } from '@/data'
@@ -34,12 +35,7 @@ export default function Settings() {
 
   return (
     <section className="admin-page">
-      <header className="admin-page__head">
-        <div>
-          <h1 className="admin-page__title">{t('admin.settings')}</h1>
-          <p className="admin-page__subtitle">{t('admin.settingsSubtitle')}</p>
-        </div>
-      </header>
+      <PageHeader title={t('admin.settings')} description={t('admin.settingsSubtitle')} />
 
       <form className="settings max-w-2xl bg-surface border border-border rounded-xl p-6 shadow-sm space-y-4" onSubmit={save}>
         <Field label={t('settings.confirmMode')}>
