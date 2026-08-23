@@ -77,6 +77,18 @@ export const ar = {
   'form.invalidEmail': 'بريد إلكتروني غير صالح',
   'form.fixFields': 'يرجى ملء الحقول المطلوبة بشكل صحيح',
   'form.stillNeeded': 'متبقي:',
+  'form.phoneHint': 'مثال: 0612345678 أو +212612345678',
+  'form.phoneOk': 'الرقم صالح ·',
+  'form.phoneTooLong': 'الرقم فيه أرقام أكثر من اللازم. الرقم المغربي 10 أرقام يبدأ بـ 06 أو 07 أو 05.',
+  'form.phoneTooShort': 'الرقم قصير. أكمل 10 أرقام.',
+  'field.slot': 'الوقت',
+  'field.hold': 'الحجز المؤقت',
+  'common.error': 'حدث خطأ. حاول مرة أخرى.',
+  'error.auth_failed': 'تعزّر الدخول. حاول مرة أخرى.',
+  'nav.menu': 'القائمة',
+  'nav.close': 'إغلاق القائمة',
+  'nav.language': 'اللغة',
+  'nav.account': 'حسابي',
 
   'queue.title': 'طابور الانتظار المباشر',
   'queue.subtitle': 'تابع دورك في {name} لحظة بلحظة',
@@ -437,6 +449,18 @@ export const fr: Record<TranslationKey, string> = {
   'form.invalidEmail': 'E-mail non valide',
   'form.fixFields': 'Veuillez remplir correctement les champs requis',
   'form.stillNeeded': 'Requis :',
+  'form.phoneHint': 'Ex. : 0612345678 ou +212612345678',
+  'form.phoneOk': 'Numéro valide ·',
+  'form.phoneTooLong': 'Trop de chiffres. Un numéro marocain a 10 chiffres et commence par 06, 07 ou 05.',
+  'form.phoneTooShort': 'Numéro trop court. Complétez les 10 chiffres.',
+  'field.slot': 'Horaire',
+  'field.hold': 'Réservation temporaire',
+  'common.error': "Une erreur s'est produite. Réessayez.",
+  'error.auth_failed': 'Connexion impossible. Réessayez.',
+  'nav.menu': 'Menu',
+  'nav.close': 'Fermer le menu',
+  'nav.language': 'Langue',
+  'nav.account': 'Mon compte',
 
   'queue.title': "File d'attente en direct",
   'queue.subtitle': 'Suivez votre passage à {name} en temps réel',
@@ -730,19 +754,31 @@ export const DICTIONARIES: Record<Locale, Record<string, string>> = {
   en: fr,
 }
 
+/** المفتاح المفقود لا يُعرَض كما هو: نحوّل الجزء الأخير إلى نص مقروء. */
+function humanize(key: string): string {
+  const last = key.split('.').pop() ?? key
+  const spaced = last.replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/[_-]+/g, ' ')
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1)
+}
+
 export function translate(
   locale: Locale,
   key: string,
   vars?: Record<string, string | number>,
 ): string {
-  const dict = DICTIONARIES[locale] ?? ar
-  let out = dict[key] ?? (ar as Record<string, string>)[key] ?? key
-  if (vars) {
-    for (const [k, v] of Object.entries(vars)) {
-      out = out.replace(`{${k}}`, String(v))
-    }
+  const dict = locale === 'fr' ? fr : ar
+  const raw = (dict as Record<string, string>)[key] ?? (ar as Record<string, string>)[key]
+
+  if (raw === undefined) {
+    if (import.meta.env.DEV) console.warn('[maweid][i18n] مفتاح مفقود:', key)
+    return humanize(key)
   }
-  return out
+
+  if (!vars) return raw
+  return Object.keys(vars).reduce(
+    (acc, name) => acc.split('{' + name + '}').join(String(vars[name])),
+    raw,
+  )
 }
 
 export function missingKeys(locale: Locale): string[] {

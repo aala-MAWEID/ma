@@ -8,7 +8,9 @@
   },
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
-    "build": "node scripts/audit-logical-props.mjs && tsc -b && vite build",
+    "i18n:audit": "node scripts/i18n-audit.mjs",
+    "prebuild": "node scripts/audit-logical-props.mjs && node scripts/i18n-audit.mjs",
+    "build": "node scripts/audit-logical-props.mjs && node scripts/i18n-audit.mjs && tsc -b && vite build",
     "build:pages": "vite build && node scripts/pages-fallback.mjs",
     "preview:pages": "vite preview --port=4173",
     "preview": "vite preview",

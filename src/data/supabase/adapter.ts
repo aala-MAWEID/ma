@@ -265,23 +265,35 @@ export const supabaseAdapter: DataAdapter = {
     const pStaffId = typeof slugOrInput === 'string' ? staffId! : slugOrInput.staffId
     const pStartsAt = typeof slugOrInput === 'string' ? startsAt! : slugOrInput.startsAt
 
-    const booking = toBooking(
-      await rpc('hold_slot', {
-        p_slug: pSlug,
-        p_service_id: pServiceId,
-        p_staff_id: pStaffId,
-        p_starts_at: pStartsAt.toISOString(),
-      }),
-    )
-    const expiresAt = booking.holdExpiresAt ?? new Date(Date.now() + 10 * 60_000)
+    const out = await rpc<any>('hold_slot', {
+      p_slug: pSlug,
+      p_service_id: pServiceId,
+      p_staff_id: pStaffId,
+      p_starts_at: pStartsAt.toISOString(),
+    })
+
+    // الدالة returns table ⇒ مصفوفة. وأسماء الأعمدة: booking_id, code, expires_at.
+    const row = (Array.isArray(out) ? out[0] : out) as
+      | { booking_id?: string; code?: string; expires_at?: string }
+      | undefined
+
+    if (!row?.booking_id || !row.code) throw new AppError('slot_taken')
+
+    const parsed = row.expires_at ? new Date(row.expires_at) : null
+    const expiresAt =
+      parsed && Number.isFinite(parsed.getTime())
+        ? parsed
+        : new Date(Date.now() + 10 * 60_000)
+
     return {
-      ...booking,
-      bookingId: booking.id,
-      code: booking.code,
+      bookingId: row.booking_id,
+      code: row.code,
       expiresAt,
       holdExpiresAt: expiresAt,
-      booking,
-    }
+      startsAt: pStartsAt,
+      serviceId: pServiceId,
+      staffId: pStaffId,
+    } as HoldResult
   },
 
   async releaseHold(bookingId: string, code?: string): Promise<void> {

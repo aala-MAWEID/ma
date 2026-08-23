@@ -5,9 +5,9 @@ import { useToast } from '@/contexts/ToastContext'
 import { Spinner } from '@/components/ui'
 import '@/styles/google-button.css'
 
-type Props = { redirectTo?: string; label?: string; size?: 'sm' | 'md'; block?: boolean }
+type Props = { redirectTo?: string; label?: string; size?: 'sm' | 'md'; block?: boolean; compact?: boolean }
 
-export function GoogleButton({ redirectTo, label, size = 'md', block }: Props) {
+export function GoogleButton({ redirectTo, label, size = 'md', block, compact }: Props) {
   const { signInWithGoogle } = useAuth()
   const { t } = useLocale()
   const toast = useToast()
@@ -27,12 +27,19 @@ export function GoogleButton({ redirectTo, label, size = 'md', block }: Props) {
   return (
     <button
       type="button"
-      className={['btn-google', size === 'sm' ? 'btn-google--sm' : '', block ? 'btn-google--block' : '']
+      className={[
+        'btn-google',
+        size === 'sm' ? 'btn-google--sm' : '',
+        block ? 'btn-google--block' : '',
+        compact ? 'btn-google--compact' : '',
+      ]
         .filter(Boolean)
         .join(' ')}
       onClick={go}
       disabled={busy}
       aria-busy={busy}
+      aria-label={label ?? t('auth.continueWithGoogle')}
+      title={label ?? t('auth.continueWithGoogle')}
     >
       {busy ? (
         <Spinner size={18} />
@@ -62,7 +69,7 @@ export function GoogleButton({ redirectTo, label, size = 'md', block }: Props) {
           />
         </svg>
       )}
-      <span>{label ?? t('auth.continueWithGoogle')}</span>
+      {!compact && <span>{label ?? t('auth.continueWithGoogle')}</span>}
     </button>
   )
 }

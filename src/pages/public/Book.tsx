@@ -72,17 +72,19 @@ export default function Book() {
     const res = await flow.attemptSubmit()
     if (res.ok) return
 
+    if (res.reason === 'busy') return
+
     if (res.reason === 'expired') {
       toast.warn(t('book.holdExpiredPickAgain'))
       flow.setStep('time')
       return
     }
     if (res.reason === 'error') {
-      toast.error(res.message || t('common.error'))
+      toast.error(res.code ? t(errorKey(res.code)) : t('common.error'))
       return
     }
     toast.error(t('form.fixFields'))
-    document.getElementById(res.reason)?.focus()
+    document.getElementById(res.reason === 'fullName' ? 'fullName' : res.reason)?.focus()
   }
 
   return (
@@ -170,7 +172,7 @@ export default function Book() {
               {flow.hold.hold && (
                 <HoldTimer
                   remainingMs={flow.hold.remainingMs}
-                  totalMs={300_000}
+                  totalMs={(bundle.settings.holdTtlMin ?? 10) * 60_000}
                   urgent={flow.hold.urgent}
                 />
               )}

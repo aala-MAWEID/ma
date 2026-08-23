@@ -47,7 +47,7 @@ export function CustomerForm({
       </Field>
 
       <Field
-        label={t('form.phone')}
+        label={t('field.phone')}
         required
         htmlFor="phone"
         error={show('phone') && errors.phone ? t(errors.phone) : undefined}
@@ -78,7 +78,7 @@ export function CustomerForm({
       </Field>
 
       <Field
-        label={t('form.field.email')}
+        label={t('field.email')}
         required={requireEmail}
         hint={requireEmail ? undefined : ` · (${t('field.optional')})`}
         htmlFor="email"
@@ -99,7 +99,7 @@ export function CustomerForm({
       </Field>
 
       <Field
-        label={t('form.field.notes')}
+        label={t('field.notes')}
         hint={` · (${t('field.optional')})`}
         htmlFor="notes"
         error={show('notes') && errors.notes ? t(errors.notes) : undefined}

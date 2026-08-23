@@ -282,8 +282,11 @@ export interface HoldResult {
   bookingId: UUID
   code: string
   expiresAt: Date
-  booking: Booking
-  holdExpiresAt: Date
+  booking?: Booking
+  holdExpiresAt?: Date
+  startsAt?: Date
+  serviceId?: UUID
+  staffId?: UUID
 }
 
 export interface TenantBundle {

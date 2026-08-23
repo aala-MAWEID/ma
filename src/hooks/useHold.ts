@@ -5,34 +5,45 @@ import type { HoldResult } from '@/data'
 import type { UUID } from '@/types/domain'
 
 /**
- * The temporary reservation.
+ * الحجز المؤقت.
  *
- * Without it, two customers open the same slot, both fill in a form, and the
- * second one gets an error after typing everything — the worst possible moment
- * to fail. With it, the slot is locked the instant the customer picks a time
- * and released automatically if they wander off.
- *
- * The hold is also released on unmount and on tab close, so an abandoned
- * checkout does not freeze a slot for the full TTL.
+ * درس مدفوع الثمن: النسخة السابقة كانت تحفظ remainingMs في state وتقرر الانتهاء
+ * من خلاله، فكانت أول دورة عرض بعد الحجز ترى 0 وتُعلن الانتهاء فوراً.
+ * الآن: مصدر الحقيقة الوحيد هو hold.expiresAt، والموقّت مجرد مُحدِّث عرض.
  */
 export function useHold(slug: string) {
   const [hold, setHold] = useState<HoldResult | null>(null)
-  const [remainingMs, setRemainingMs] = useState(0)
+  const [now, setNow] = useState(() => Date.now())
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<ErrorCode | null>(null)
   const holdRef = useRef<HoldResult | null>(null)
 
-  holdRef.current = hold
+  const setBoth = useCallback((next: HoldResult | null) => {
+    holdRef.current = next
+    setHold(next)
+  }, [])
+
+  const expiresMs = hold ? hold.expiresAt.getTime() : 0
+  const validExpiry = Number.isFinite(expiresMs) && expiresMs > 0
+  const remainingMs = hold ? (validExpiry ? Math.max(0, expiresMs - now) : 600_000) : 0
+  const expired = Boolean(hold) && validExpiry && expiresMs <= now
 
   const acquire = useCallback(
     async (serviceId: UUID, staffId: UUID, startsAt: Date): Promise<HoldResult | null> => {
       setPending(true)
       setError(null)
       try {
-        // never keep two holds at once
-        if (holdRef.current) await data.releaseHold(holdRef.current.bookingId)
+        const previous = holdRef.current
+        if (previous?.bookingId) await data.releaseHold(previous.bookingId, previous.code)
+        setBoth(null)
+
         const next = await data.holdSlot(slug, serviceId, staffId, startsAt)
-        setHold(next)
+        if (!next?.bookingId) {
+          setError('unknown')
+          return null
+        }
+        setBoth(next)
+        setNow(Date.now())
         return next
       } catch (e) {
         setError(errorCodeOf(e))
@@ -41,58 +52,59 @@ export function useHold(slug: string) {
         setPending(false)
       }
     },
-    [slug],
+    [slug, setBoth],
   )
 
   const release = useCallback(async () => {
     const current = holdRef.current
-    if (!current) return
-    setHold(null)
-    await data.releaseHold(current.bookingId)
-  }, [])
-
-  /** Called after a successful confirm so the cleanup does not delete it. */
-  const forget = useCallback(() => setHold(null), [])
-
-  // countdown
-  useEffect(() => {
-    if (!hold) {
-      setRemainingMs(0)
-      return
+    setBoth(null)
+    if (!current?.bookingId) return
+    try {
+      await data.releaseHold(current.bookingId, current.code)
+    } catch {
+      /* إلغاء حجز مؤقت لا يستحق رسالة خطأ للمستخدم */
     }
-    const update = () => setRemainingMs(hold.expiresAt.getTime() - Date.now())
-    update()
-    const id = window.setInterval(update, 1000)
+  }, [setBoth])
+
+  /** بعد تأكيد ناجح: ننسى الحجز دون حذفه من القاعدة. */
+  const forget = useCallback(() => setBoth(null), [setBoth])
+
+  const clearError = useCallback(() => setError(null), [])
+
+  // موقّت عرض واحد: يعمل فقط مع حجز قائم، ويتوقف عند الانتهاء.
+  useEffect(() => {
+    if (!hold || !validExpiry) return
+    setNow(Date.now())
+    const id = window.setInterval(() => setNow(Date.now()), 1000)
     return () => window.clearInterval(id)
-  }, [hold])
+  }, [hold, validExpiry])
 
-  // expiry
+  // الانتهاء الحقيقي فقط (لا يعتمد على حالة قديمة)
   useEffect(() => {
-    if (hold && remainingMs <= 0) {
-      setHold(null)
-      setError('hold_expired')
-    }
-  }, [hold, remainingMs])
+    if (!hold || !validExpiry) return
+    if (expiresMs > Date.now()) return
+    setBoth(null)
+    setError('hold_expired')
+  }, [hold, validExpiry, expiresMs, now, setBoth])
 
-  // release on unmount and on tab close
+  // تحرير الحجز عند إغلاق اللسان فقط (ليس عند كل unmount لأن React 19 في StrictMode يركّب مرتين)
   useEffect(() => {
-    const onUnload = () => {
-      if (holdRef.current) void data.releaseHold(holdRef.current.bookingId)
+    const onHide = () => {
+      const current = holdRef.current
+      if (current?.bookingId) void data.releaseHold(current.bookingId, current.code)
     }
-    window.addEventListener('pagehide', onUnload)
-    return () => {
-      window.removeEventListener('pagehide', onUnload)
-      onUnload()
-    }
+    window.addEventListener('pagehide', onHide)
+    return () => window.removeEventListener('pagehide', onHide)
   }, [])
 
   return {
     hold,
     remainingMs,
-    expired: Boolean(hold) && remainingMs <= 0,
-    urgent: remainingMs > 0 && remainingMs < 60_000,
+    expired,
+    urgent: Boolean(hold) && remainingMs > 0 && remainingMs < 60_000,
     pending,
     error,
+    clearError,
     acquire,
     release,
     forget,

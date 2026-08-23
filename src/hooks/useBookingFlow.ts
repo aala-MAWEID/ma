@@ -116,61 +116,57 @@ export function useBookingFlow() {
               ? 'slot'
               : null
 
-  const submit = useCallback(async () => {
-    if (!holdApi.hold || !isClean(fieldErrors)) return
-    setSubmitting(true)
-    setError(null)
-    try {
-      const booking = await data.confirmHold({
-        bookingId: holdApi.hold.bookingId,
-        code: holdApi.hold.code,
-        fullName: draft.fullName,
-        phone: draft.phone,
-        email: draft.email || undefined,
-        notes: draft.notes || undefined,
-        locale,
-      })
-      holdApi.forget()
-      setResult(booking)
-      setStep('done')
-    } catch (e) {
-      setError(errorCodeOf(e))
-      // a lost hold sends the customer back to the grid, not to a dead end
-      if (errorCodeOf(e) === 'hold_expired' || errorCodeOf(e) === 'slot_taken') {
-        setSlot(null)
-        setStep('time')
+  /** يقبل حجزاً صريحاً حتى لا يقرأ حالة قديمة من الإغلاق. */
+  const submitWith = useCallback(
+    async (activeHold: { bookingId: string; code: string }) => {
+      setSubmitting(true)
+      setError(null)
+      try {
+        const booking = await data.confirmHold({
+          bookingId: activeHold.bookingId,
+          code: activeHold.code,
+          fullName: draft.fullName.trim(),
+          phone: draft.phone.trim(),
+          email: draft.email?.trim() || undefined,
+          notes: draft.notes?.trim() || undefined,
+          locale,
+        })
+        holdApi.forget()
+        setResult(booking)
+        setStep('done')
+        return { ok: true as const }
+      } catch (e) {
+        const code = errorCodeOf(e)
+        setError(code)
+        if (code === 'hold_expired' || code === 'hold_already_used' || code === 'slot_taken') {
+          setSlot(null)
+          setStep('time')
+          return { ok: false as const, reason: 'expired' as const, code }
+        }
+        return { ok: false as const, reason: 'error' as const, code }
+      } finally {
+        setSubmitting(false)
       }
-    } finally {
-      setSubmitting(false)
-    }
-  }, [holdApi, fieldErrors, draft, locale])
+    },
+    [draft, locale, holdApi],
+  )
 
-  const attemptSubmit = useCallback(async (): Promise<
-    | { ok: true }
-    | {
-        ok: false
-        reason: NonNullable<typeof blockingReason> | 'expired' | 'error'
-        message?: string
-      }
-  > => {
-    if (submitting) return { ok: false, reason: 'error' }
-    if (blockingReason) return { ok: false, reason: blockingReason }
+  const attemptSubmit = useCallback(async () => {
+    if (submitting) return { ok: false as const, reason: 'busy' as const }
+    if (blockingReason) return { ok: false as const, reason: blockingReason }
+    if (!slot || !serviceId) return { ok: false as const, reason: 'slot' as const }
 
-    try {
-      if (!holdApi.hold && slot && serviceId) {
-        await holdApi.acquire(serviceId, slot.staffId, slot.start)
-      }
-      if (!holdApi.hold) return { ok: false, reason: 'expired' }
-      await submit()
-      return { ok: true }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err)
-      if (message.includes('hold_expired') || message.includes('hold_already_used')) {
-        return { ok: false, reason: 'expired', message }
-      }
-      return { ok: false, reason: 'error', message }
+    // الحجز القائم أو إعادة حجز فورية، دون قراءة الحالة بعد await
+    let active = holdApi.hold
+    if (!active || holdApi.expired) {
+      active = await holdApi.acquire(serviceId, slot.staffId, slot.start)
     }
-  }, [submitting, blockingReason, holdApi, slot, serviceId, submit])
+    if (!active?.bookingId || !active.code) {
+      return { ok: false as const, reason: 'expired' as const }
+    }
+
+    return submitWith({ bookingId: active.bookingId, code: active.code })
+  }, [submitting, blockingReason, slot, serviceId, holdApi, submitWith])
 
   const back = useCallback(() => {
     const i = BOOKING_STEPS.indexOf(step)
@@ -207,7 +203,7 @@ export function useBookingFlow() {
     draft,
     setDraft,
     fieldErrors,
-    canSubmit: isClean(fieldErrors) && Boolean(holdApi.hold) && !submitting,
+    canSubmit: !submitting,
     blockingReason,
     attemptSubmit,
     submitting,
@@ -218,7 +214,7 @@ export function useBookingFlow() {
     chooseStaff,
     chooseDay,
     chooseSlot,
-    submit,
+    submit: attemptSubmit,
     back,
     reset,
   }
