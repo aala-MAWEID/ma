@@ -68,11 +68,16 @@ npm run preview:pages        # http://localhost:4173/ma/
 
 ## قاعدة البيانات
 
-مخطط كامل جاهز في `supabase/MAWEID-SUPABASE.sql`: ١٤ جدولاً، دوال RPC، RLS، وبيانات بداية.
+ملفات قاعدة البيانات تُنفّذ بالترتيب التالي:
+1. `supabase/MAWEID-SUPABASE.sql` أولاً (المخطط الكامل، الجداول، دوال RPC الأساسية، RLS، وبيانات البداية).
+2. `supabase/MAWEID-ADMIN-V5.sql` ثانياً (حزمة لوحة التحكم V5.2: حماية الحسابات، ترتيب الموظفين والخدمات، ساعات العمل، مواعيدي، وغيرها).
 
-1. Supabase ← SQL Editor ← الصق الملف كاملاً ← Run.
-2. تحقق: `select public.health_check('zaytouna');`
-3. ربط حساب المالك: `select public.bind_owner('you@example.com','zaytouna');`
+خطوات التنفيذ:
+1. Supabase ← SQL Editor ← New query ← الصق `MAWEID-SUPABASE.sql` كاملاً ← Run.
+2. Supabase ← SQL Editor ← New query ← الصق `MAWEID-ADMIN-V5.sql` كاملاً ← Run.
+3. تحقق: `select public.health_check('zaytouna');`
+4. ربط حساب المالك: `select public.bind_owner('you@example.com','zaytouna');` (أو استخدام زر "ربط حسابي كمالك للمحل" في واجهة الدخول).
+5. تحديث المخطط: `notify pgrst, 'reload schema';`
 
 ## النشر على GitHub Pages
 
