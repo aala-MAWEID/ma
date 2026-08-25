@@ -855,6 +855,27 @@ export const supabaseAdapter: DataAdapter = {
     await rpc('delete_time_off', { p_tenant_id: tenantId, p_id: id })
   },
 
+  async setServicePriceVisibility(
+    tenantId: string,
+    serviceId: string,
+    hidden: boolean,
+  ): Promise<void> {
+    await rpc('set_service_price_visibility', {
+      p_tenant_id: tenantId,
+      p_service_id: serviceId,
+      p_hidden: hidden,
+    })
+  },
+
+  async getSettingsSchema(): Promise<Record<string, import('../domain').SettingFieldSchema>> {
+    try {
+      const res = await rpc<Record<string, import('../domain').SettingFieldSchema>>('get_settings_schema')
+      return res || {}
+    } catch {
+      return {}
+    }
+  },
+
   async signIn(email: string, password: string): Promise<Session> {
     if (supabaseConfigProblem) {
       throw new AppError('network', `supabase_not_configured: ${supabaseConfigProblem}`)

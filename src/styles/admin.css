@@ -4,10 +4,23 @@
    ========================================================================== */
 
 .admin {
-  display: grid;
   min-block-size: 100dvh;
-  grid-template-columns: 232px 1fr;
   background: var(--mw-surface-2);
+}
+
+.admin--desktop {
+  display: grid;
+  grid-template-columns: 264px 1fr;
+  transition: grid-template-columns 0.2s ease;
+}
+
+.admin--desktop.is-collapsed {
+  grid-template-columns: 72px 1fr;
+}
+
+.admin--mobile {
+  display: flex;
+  flex-direction: column;
 }
 
 .admin__aside {
@@ -610,31 +623,11 @@
 }
 
 @media (max-width: 860px) {
-  .admin {
-    grid-template-columns: 1fr;
-  }
-  .admin-nav {
-    block-size: auto;
-    border-inline-end: 0;
-    border-block-end: 1px solid var(--mw-line);
-    padding: var(--space-3);
-  }
-  .admin-nav__brand {
-    margin-block-end: var(--space-2);
-  }
-  .admin-nav__list {
-    flex-direction: row;
-    overflow-x: auto;
-    padding-block-end: var(--space-1);
-  }
-  .admin-nav__foot {
-    display: none;
-  }
   .admin__main {
     padding: var(--space-3);
   }
 }
--e 
+
 .admin-head-mobile { display: none; }
 @media (max-width: 860px) {
   .desktop-only { display: none !important; }

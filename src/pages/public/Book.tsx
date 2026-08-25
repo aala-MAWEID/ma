@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Button, EmptyState } from '@/components/ui'
 import { ServicePicker } from '@/components/booking/ServicePicker'
@@ -27,6 +27,19 @@ export default function Book() {
   const flow = useBookingFlow()
   const [showFormErrors, setShowFormErrors] = useState(false)
 
+  const advanceDays = Math.min(bundle.settings.maxAdvanceDays ?? 14, 30)
+  const closedDays = useMemo(
+    () => new Set(bundle.closedDates.map((d) => d.day)),
+    [bundle.closedDates],
+  )
+  const closedLabels = useMemo(() => {
+    const map: Record<string, string> = {}
+    for (const d of bundle.closedDates) {
+      if (d.label) map[d.day] = d.label
+    }
+    return map
+  }, [bundle.closedDates])
+
   useEffect(() => {
     reload()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -47,6 +60,7 @@ export default function Book() {
     staffId: flow.staffId,
     day: flow.day,
     timeZone: bundle.tenant.timeZone,
+    days: advanceDays,
     collapse: flow.staffId === null,
   })
 
@@ -145,8 +159,10 @@ export default function Book() {
                 onPick={flow.chooseDay}
                 timeZone={bundle.tenant.timeZone}
                 counts={availability.countsByDay}
-                closedDays={new Set()}
-                days={bundle.settings.maxAdvanceDays ?? 14}
+                closedDays={closedDays}
+                closedLabels={closedLabels}
+                loading={availability.loading}
+                days={advanceDays}
               />
               <SlotGrid
                 periods={availability.periods}

@@ -62,11 +62,9 @@ const svc = (
   id: string,
   name: string,
   nameFr: string,
-  category: string,
   durationMin: number,
   bufferAfterMin: number,
   priceCentimes: number,
-  requiresApproval: boolean,
   color: string,
   sortOrder: number,
 ): Service => ({
@@ -74,25 +72,23 @@ const svc = (
   tenantId: TENANT_ID,
   name,
   nameFr,
-  category,
   durationMin,
   bufferBeforeMin: 0,
   bufferAfterMin,
   priceCentimes,
-  priceFrom: false,
-  requiresApproval,
+  priceHidden: false,
   color,
   isActive: true,
   sortOrder,
 })
 
 export const services: Service[] = [
-  svc('sv-cut',   'حلاقة رجالية', 'Coupe homme',     'حلاقة', 30,  5,  5000, true,  '#0E7C86', 1),
-  svc('sv-beard', 'لحية وتشذيب',  'Barbe',           'حلاقة', 20,  5,  3000, false, '#4A6741', 2),
-  svc('sv-color', 'صباغة',        'Coloration',      'عناية', 90, 15, 25000, true,  '#B2543A', 3),
-  svc('sv-kids',  'حلاقة أطفال',  'Coupe enfant',    'حلاقة', 20,  5,  3500, false, '#A8802A', 4),
-  svc('sv-full',  'باقة كاملة',    'Forfait complet', 'باقات', 75, 15, 12000, true,  '#1F5E6B', 5),
-  svc('sv-wash',  'غسيل وتصفيف',  'Shampoing',       'عناية', 25,  5,  4000, false, '#6E7A82', 6),
+  svc('sv-cut',   'حلاقة رجالية', 'Coupe homme',     30,  5,  5000, '#0E7C86', 1),
+  svc('sv-beard', 'لحية وتشذيب',  'Barbe',           20,  5,  3000, '#4A6741', 2),
+  svc('sv-color', 'صباغة',        'Coloration',      90, 15, 25000, '#B2543A', 3),
+  svc('sv-kids',  'حلاقة أطفال',  'Coupe enfant',    20,  5,  3500, '#A8802A', 4),
+  svc('sv-full',  'باقة كاملة',    'Forfait complet', 75, 15, 12000, '#1F5E6B', 5),
+  svc('sv-wash',  'غسيل وتصفيف',  'Shampoing',       25,  5,  4000, '#6E7A82', 6),
 ]
 
 export const staffServices: StaffService[] = [

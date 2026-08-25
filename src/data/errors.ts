@@ -116,6 +116,9 @@ const KNOWN = new Set<string>([
   'service_has_bookings',
   'bad_order',
   'shop_already_claimed',
+  'unsupported',
+  'network',
+  'unknown',
 ])
 
 /**

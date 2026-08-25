@@ -581,7 +581,7 @@ table,
   font-weight: 500;
   color: var(--mw-ink);
 }
--e 
+
 .site-head__mobile-auth { display: none; }
 @media (max-width: 860px) {
   .site-head__mobile-auth { display: flex; align-items: center; gap: 8px; }

@@ -192,7 +192,7 @@
   .btn-icon:hover, .color-swatch:hover { transform: none; }
   .turn-tracker__dot { animation: none; }
 }
--e 
+
 .rtl-flip { [dir='rtl'] & { transform: scaleX(-1); } }
 .spinner { animation: spin 1s linear infinite; }
 @keyframes spin { 100% { transform: rotate(360deg); } }

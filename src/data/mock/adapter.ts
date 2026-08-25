@@ -264,18 +264,6 @@ function assertBookable(
   })
   if (busy) throw new AppError('slot_taken')
 
-  // daily cap
-  if (service.maxPerDay != null) {
-    const count = db.bookings.filter(
-      (b) =>
-        b.serviceId === serviceId &&
-        b.id !== ignoreBookingId &&
-        BLOCKING_STATUSES.includes(b.status) &&
-        dayKeyOf(b.startsAt, tz) === day,
-    ).length
-    if (count >= service.maxPerDay) throw new AppError('slot_taken')
-  }
-
   return { durationMin, bufferBeforeMin, bufferAfterMin, priceCentimes }
 }
 
@@ -330,7 +318,6 @@ export const mockAdapter: DataAdapter = {
       todayKey: todayKey(db.tenant.timeZone),
       bufferBeforeMin: service.bufferBeforeMin,
       bufferAfterMin: service.bufferAfterMin,
-      maxPerDay: service.maxPerDay,
       staff: candidatesFor(q.serviceId, q.staffId),
       workingHours: db.workingHours,
       closedDays: new Set(db.closedDates.map((c) => c.day)),
@@ -446,7 +433,7 @@ export const mockAdapter: DataAdapter = {
     }
 
     const service = db.services.find((s) => s.id === booking.serviceId)
-    const autoConfirm = db.settings.autoConfirm && !service?.requiresApproval
+    const autoConfirm = Boolean(db.settings.autoConfirm)
     const nextStatus: Booking['status'] = autoConfirm ? 'confirmed' : 'pending'
 
     store.write((d) => {
@@ -1132,12 +1119,10 @@ export const mockAdapter: DataAdapter = {
           name: String(input.name ?? 'خدمة جديدة'),
           nameFr: input.nameFr ? String(input.nameFr) : undefined,
           description: input.description ? String(input.description) : undefined,
-          category: input.category ? String(input.category) : 'general',
           durationMin: input.durationMin != null ? Number(input.durationMin) : 30,
           bufferBeforeMin: input.bufferBeforeMin != null ? Number(input.bufferBeforeMin) : 0,
           bufferAfterMin: input.bufferAfterMin != null ? Number(input.bufferAfterMin) : 0,
           priceCentimes: input.priceCentimes != null ? Number(input.priceCentimes) : 5000,
-          requiresApproval: Boolean(input.requiresApproval),
           color: input.color ? String(input.color) : undefined,
           isActive: input.isActive != null ? Boolean(input.isActive) : true,
           sortOrder: input.sortOrder != null ? Number(input.sortOrder) : d.services.length + 1,
@@ -1462,6 +1447,33 @@ export const mockAdapter: DataAdapter = {
     return store.subscribe(() => {
       cb(store.read().session)
     })
+  },
+
+  async setServicePriceVisibility(
+    _tenantId: string,
+    serviceId: string,
+    hidden: boolean,
+  ): Promise<void> {
+    store.write((d) => {
+      const s = d.services.find((svc) => svc.id === serviceId)
+      if (s) {
+        s.priceHidden = hidden
+      }
+    })
+  },
+
+  async getSettingsSchema(): Promise<Record<string, import('../domain').SettingFieldSchema>> {
+    return {
+      slot_granularity_min: { key: 'slot_granularity_min', type: 'integer', min: 5, max: 60, step: 5 },
+      min_notice_min: { key: 'min_notice_min', type: 'integer', min: 0, max: 1440, step: 15 },
+      max_advance_days: { key: 'max_advance_days', type: 'integer', min: 1, max: 90, step: 1 },
+      hold_ttl_min: { key: 'hold_ttl_min', type: 'integer', min: 2, max: 30, step: 1 },
+      cancel_cutoff_min: { key: 'cancel_cutoff_min', type: 'integer', min: 0, max: 2880, step: 15 },
+      reschedule_cutoff_min: { key: 'reschedule_cutoff_min', type: 'integer', min: 0, max: 2880, step: 15 },
+      max_active_per_customer: { key: 'max_active_per_customer', type: 'integer', min: 1, max: 10, step: 1 },
+      block_after_no_shows: { key: 'block_after_no_shows', type: 'integer', min: 1, max: 10, step: 1 },
+      queue_max_size: { key: 'queue_max_size', type: 'integer', min: 1, max: 100, step: 1 },
+    }
   },
 
   permissions() {

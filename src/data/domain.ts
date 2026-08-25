@@ -91,39 +91,33 @@ export interface Tenant {
   isPublished: boolean
 }
 
+export interface SettingFieldSchema {
+  key: string
+  type: string
+  min?: number | null
+  max?: number | null
+  step?: number | null
+  nullable?: boolean
+}
+
 export interface TenantSettings {
   slotGranularityMin?: number
-  slot_granularity_min?: number
   minNoticeMin?: number
-  min_notice_min?: number
   maxAdvanceDays?: number
-  max_advance_days?: number
   holdTtlMin?: number
-  hold_ttl_min?: number
   autoConfirm?: boolean
-  auto_confirm?: boolean
   cancelCutoffMin?: number
-  cancel_cutoff_min?: number
   rescheduleCutoffMin?: number
-  reschedule_cutoff_min?: number
   allowCustomerCancel?: boolean
-  allow_customer_cancel?: boolean
   allowCustomerReschedule?: boolean
-  allow_customer_reschedule?: boolean
   requireEmail?: boolean
-  require_email?: boolean
   allowAnyStaff?: boolean
-  allow_any_staff?: boolean
   showStaffPicker?: boolean
-  show_staff_picker?: boolean
   maxActivePerCustomer?: number
-  max_active_per_customer?: number
   blockAfterNoShows?: number
-  block_after_no_shows?: number
-  queue_enabled?: boolean
   queueEnabled?: boolean
-  queue_max_size?: number
   queueMaxSize?: number
+  showPrices?: boolean
 }
 
 export interface Staff {
@@ -144,17 +138,14 @@ export interface Service {
   name: string
   nameFr?: string
   description?: string
-  category: string
   durationMin: number
   bufferBeforeMin: number
   bufferAfterMin: number
   priceCentimes: number
-  priceFrom?: boolean
-  requiresApproval: boolean
+  priceHidden?: boolean
   color?: string
   isActive: boolean
   sortOrder: number
-  maxPerDay?: number
 }
 
 export interface StaffService {

@@ -9,7 +9,8 @@ export function PageHeader({
   onRefresh,
   refreshing,
   onBack,
-  hideBack
+  hideBack,
+  actions,
 }: { 
   title: string
   description?: string
@@ -18,6 +19,7 @@ export function PageHeader({
   refreshing?: boolean
   onBack?: () => void
   hideBack?: boolean
+  actions?: React.ReactNode
 }) {
   const navigate = useNavigate()
   const location = useLocation()
@@ -71,7 +73,8 @@ export function PageHeader({
         {description && <p style={{ margin: 0, fontSize: 13, color: 'var(--mw-ink-3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{description}</p>}
       </div>
 
-      <div style={{ display: 'flex', gap: 4 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        {actions}
         {onRefresh && (
           <button className="btn-icon" onClick={onRefresh} aria-label="تحديث" disabled={refreshing}>
             <RefreshIcon className={refreshing ? 'spinner' : ''} />

@@ -50,6 +50,12 @@ export function useMediaQuery(query: string): boolean {
   return matches
 }
 
+/** Single source of truth for the admin device split. Mirrors desktop.css. */
+export const DESKTOP_QUERY = '(min-width: 861px)'
+export function useIsDesktop(): boolean {
+  return useMediaQuery(DESKTOP_QUERY)
+}
+
 /** Close on Escape. Every overlay in the app uses it. */
 export function useEscape(onEscape: () => void, active = true): void {
   useEffect(() => {

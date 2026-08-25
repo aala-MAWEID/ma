@@ -40,12 +40,6 @@ jobs:
           VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
           VITE_DEFAULT_TENANT: ${{ vars.VITE_DEFAULT_TENANT || 'zaytouna' }}
 
-      - name: Fail early if env is missing
-        run: |
-          if grep -rq "placeholder.supabase.co" dist/assets 2>/dev/null; then
-            echo "::warning::لم تُضبط متغيرات Supabase في Settings > Secrets and variables > Actions > Variables"
-          fi
-
       - uses: actions/configure-pages@v5
 
       - uses: actions/upload-pages-artifact@v3

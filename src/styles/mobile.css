@@ -5,12 +5,7 @@
   --safe-b: env(safe-area-inset-bottom, 0px);
   --safe-t: env(safe-area-inset-top, 0px);
   --tap: 44px;
-}
 
-/* مخفية على الحاسوب */
-.burger,
-.tabbar {
-  display: none;
 }
 
 @media (max-width: 860px) {
@@ -206,47 +201,48 @@
   }
 }
 
-/* ===== إطار التطبيق: لا انزلاق أفقي، لا مطّ فوق الحد، لا تحديد عشوائي ===== */
-html {
-  -webkit-text-size-adjust: 100%;
-  text-size-adjust: 100%;
-  overscroll-behavior-y: none;
-}
-
-body {
-  overscroll-behavior: none;
-  overflow-x: hidden;
-  -webkit-tap-highlight-color: transparent;
-}
-
+/* modal / sheet lock stays global */
 body.is-locked {
   overflow: hidden;
 }
 
-/* لمس فوري بلا تأخير 300ms وبلا تكبير عند النقر المزدوج */
-button,
-[role='button'],
-a,
-.btn,
-.slot,
-.chip,
-.tabbar__item,
-.sheet__link,
-summary {
-  touch-action: manipulation;
-}
-
-/* النصوص قابلة للتحديد، والواجهة لا */
-.site-head,
-.tabbar,
-.steps,
-.btn,
-.chip {
-  -webkit-user-select: none;
-  user-select: none;
-}
-
 @media (max-width: 860px) {
+  /* ===== إطار التطبيق للموبايل فقط ===== */
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    overscroll-behavior-y: none;
+  }
+
+  body {
+    overscroll-behavior: none;
+    overflow-x: hidden;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* لمس فوري بلا تأخير 300ms وبلا تكبير عند النقر المزدوج */
+  button,
+  [role='button'],
+  a,
+  .btn,
+  .slot,
+  .chip,
+  .tabbar__item,
+  .sheet__link,
+  summary {
+    touch-action: manipulation;
+  }
+
+  /* النصوص قابلة للتحديد، والواجهة لا */
+  .site-head,
+  .tabbar,
+  .steps,
+  .btn,
+  .chip {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
   /* 1) أحجام لمس مطابقة للمعايير (44px) وخانات واضحة للأزرار */
   .btn {
     min-block-size: 48px;

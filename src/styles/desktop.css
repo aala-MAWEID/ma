@@ -1,0 +1,480 @@
+/**
+ * ============================================================================
+ * MAWEID — Desktop Layer (≥ 861px only)
+ * Contract: mobile ≤ 860px, desktop ≥ 861px, no other breakpoint may be
+ * introduced for the admin area.
+ * ============================================================================
+ */
+
+@media (min-width: 861px) {
+  :root {
+    --admin-row-h: 40px;
+    --admin-cell-pad: 8px 12px;
+    --admin-card-pad: var(--space-4);
+    --admin-rail-w: 360px;
+  }
+
+  .burger,
+  .tabbar {
+    display: none;
+  }
+
+  /* ---- Shell & Grid -------------------------------------------------------- */
+  .admin--desktop {
+    display: grid;
+    grid-template-columns: 264px minmax(0, 1fr);
+    min-block-size: 100dvh;
+    background: var(--mw-surface-2);
+    transition: grid-template-columns 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .admin--desktop.is-collapsed {
+    grid-template-columns: 72px minmax(0, 1fr);
+  }
+
+  .admin-sidebar {
+    position: sticky;
+    inset-block-start: 0;
+    block-size: 100dvh;
+    display: flex;
+    flex-direction: column;
+    background: var(--mw-surface);
+    border-inline-end: 1px solid var(--mw-line);
+    overflow-y: auto;
+    overflow-x: hidden;
+    z-index: 20;
+    user-select: none;
+    transition: inline-size 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .admin-sidebar__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-inline: var(--space-4);
+    padding-block: var(--space-3);
+    border-block-end: 1px solid var(--mw-line);
+    min-block-size: 56px;
+  }
+
+  .admin-sidebar__brand {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-weight: 700;
+    font-size: var(--text-md);
+    color: var(--mw-brand);
+    text-decoration: none;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .admin-sidebar__mark {
+    font-size: var(--text-lg);
+    flex-shrink: 0;
+  }
+
+  .admin-sidebar__toggle {
+    flex-shrink: 0;
+  }
+
+  .admin-sidebar__nav {
+    flex: 1;
+    padding-inline: var(--space-2);
+    padding-block: var(--space-3);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    list-style: none;
+    margin: 0;
+  }
+
+  .admin-sidebar__item {
+    position: relative;
+  }
+
+  .admin-sidebar__link {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding-inline: var(--space-3);
+    padding-block: 8px;
+    border-radius: 8px;
+    color: var(--mw-ink-2);
+    text-decoration: none;
+    font-size: var(--text-sm);
+    font-weight: 500;
+    transition: background 0.15s ease, color 0.15s ease;
+    white-space: nowrap;
+  }
+
+  .admin-sidebar__link:hover {
+    background: var(--mw-surface-2);
+    color: var(--mw-ink);
+  }
+
+  .admin-sidebar__link.is-active {
+    background: var(--mw-brand-050);
+    color: var(--mw-brand);
+    font-weight: 600;
+  }
+
+  .admin-sidebar__icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    inline-size: 20px;
+    block-size: 20px;
+  }
+
+  .admin-sidebar__label {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .admin-sidebar__badge {
+    padding-inline: 6px;
+    padding-block: 2px;
+    font-size: var(--text-xs);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    background: var(--mw-brand);
+    color: #ffffff;
+    border-radius: 99px;
+    line-height: 1;
+  }
+
+  /* Collapsed sidebar mode */
+  .admin--desktop.is-collapsed .admin-sidebar__label,
+  .admin--desktop.is-collapsed .admin-sidebar__brand span:not(.admin-sidebar__mark),
+  .admin--desktop.is-collapsed .admin-sidebar__badge {
+    display: none;
+  }
+
+  .admin--desktop.is-collapsed .admin-sidebar__link {
+    justify-content: center;
+    padding-inline: 0;
+  }
+
+  .admin--desktop.is-collapsed .admin-sidebar__head {
+    justify-content: center;
+    padding-inline: var(--space-2);
+  }
+
+  .admin-sidebar__foot {
+    padding-inline: var(--space-3);
+    padding-block: var(--space-3);
+    border-block-start: 1px solid var(--mw-line);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  /* ---- Desktop App Bar ----------------------------------------------------- */
+  .admin-appbar {
+    position: sticky;
+    inset-block-start: 0;
+    z-index: 30;
+    block-size: 56px;
+    background: var(--mw-surface);
+    border-block-end: 1px solid var(--mw-line);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-inline: var(--space-5);
+    gap: var(--space-4);
+  }
+
+  .admin-appbar__start {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-inline-size: 0;
+  }
+
+  .admin-appbar__breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+    color: var(--mw-ink-2);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .admin-appbar__breadcrumb-sep {
+    color: var(--mw-ink-3);
+    opacity: 0.6;
+  }
+
+  .admin-appbar__breadcrumb-current {
+    font-weight: 600;
+    color: var(--mw-ink);
+  }
+
+  .admin-appbar__center {
+    flex: 1;
+    max-inline-size: 400px;
+  }
+
+  .admin-appbar__search {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    inline-size: 100%;
+    padding-inline: var(--space-3);
+    padding-block: 6px;
+    background: var(--mw-surface-2);
+    border: 1px solid var(--mw-line);
+    border-radius: 8px;
+    font-size: var(--text-xs);
+    color: var(--mw-ink-3);
+    cursor: pointer;
+  }
+
+  .admin-appbar__search-kbd {
+    margin-inline-start: auto;
+    padding-inline: 6px;
+    padding-block: 2px;
+    background: var(--mw-surface);
+    border: 1px solid var(--mw-line);
+    border-radius: 4px;
+    font-family: inherit;
+    font-size: 10px;
+    font-weight: 600;
+  }
+
+  .admin-appbar__end {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  .admin-appbar__sync {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: var(--text-xs);
+    color: var(--mw-ink-3);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .admin-appbar__sync-dot {
+    inline-size: 8px;
+    block-size: 8px;
+    border-radius: 50%;
+    background: var(--mw-ok, #10b981);
+  }
+
+  .admin-appbar__user {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+  }
+
+  .admin-appbar__avatar {
+    inline-size: 32px;
+    block-size: 32px;
+    border-radius: 50%;
+    background: var(--mw-brand-050);
+    color: var(--mw-brand);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: var(--text-xs);
+  }
+
+  /* ---- Main Content & 12-Column Grid Helper -------------------------------- */
+  .admin__main {
+    max-inline-size: 1440px;
+    margin-inline: auto;
+    padding-inline: var(--space-5);
+    padding-block: var(--space-4);
+    inline-size: 100%;
+  }
+
+  .admin-grid {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: var(--space-4);
+  }
+
+  .admin-grid--col-4 { grid-column: span 4; }
+  .admin-grid--col-6 { grid-column: span 6; }
+  .admin-grid--col-8 { grid-column: span 8; }
+  .admin-grid--col-12 { grid-column: span 12; }
+
+  /* ---- PageHeader Component Layout ----------------------------------------- */
+  .admin-page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-block-end: var(--space-5);
+    gap: var(--space-4);
+  }
+
+  .admin-page-header__content {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .admin-page-header__title-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  .admin-page-header__title {
+    font-size: var(--text-xl);
+    font-weight: 700;
+    color: var(--mw-ink);
+    margin: 0;
+  }
+
+  .admin-page-header__count {
+    font-size: var(--text-xs);
+    font-weight: 600;
+    padding-inline: 8px;
+    padding-block: 2px;
+    background: var(--mw-surface-2);
+    border: 1px solid var(--mw-line);
+    border-radius: 99px;
+    color: var(--mw-ink-2);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .admin-page-header__subtitle {
+    font-size: var(--text-sm);
+    color: var(--mw-ink-2);
+    margin: 0;
+  }
+
+  .admin-page-header__actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-inline-start: auto;
+  }
+
+  /* ---- Desktop Tables & Cards ---------------------------------------------- */
+  .admin-table {
+    inline-size: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: var(--text-sm);
+    background: var(--mw-surface);
+    border: 1px solid var(--mw-line);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .admin-table th {
+    position: sticky;
+    inset-block-start: 0;
+    background: var(--mw-surface-2);
+    font-weight: 600;
+    color: var(--mw-ink-2);
+    text-align: start;
+    padding-inline: 12px;
+    padding-block: 10px;
+    border-block-end: 1px solid var(--mw-line);
+    white-space: nowrap;
+  }
+
+  .admin-table td {
+    padding-inline: 12px;
+    padding-block: 10px;
+    border-block-end: 1px solid var(--mw-line);
+    block-size: var(--admin-row-h);
+    vertical-align: middle;
+  }
+
+  .admin-table tbody tr:last-child td {
+    border-block-end: none;
+  }
+
+  .admin-table tbody tr:hover {
+    background: var(--mw-surface-2);
+  }
+
+  /* Tabular numbers everywhere relevant */
+  .tabular-nums,
+  .admin-table td.is-number,
+  .admin-page-header__count,
+  .kpi-card__value,
+  .price-tag,
+  time {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ---- 3-Pane Calendar Layout (Agenda) -------------------------------------- */
+  .agenda-desktop {
+    display: grid;
+    grid-template-columns: 1fr var(--admin-rail-w);
+    gap: var(--space-4);
+    align-items: start;
+  }
+
+  .agenda-desktop__main {
+    background: var(--mw-surface);
+    border: 1px solid var(--mw-line);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .agenda-desktop__rail {
+    position: sticky;
+    inset-block-start: calc(56px + var(--space-4));
+    background: var(--mw-surface);
+    border: 1px solid var(--mw-line);
+    border-radius: 12px;
+    padding: var(--admin-card-pad);
+    max-block-size: calc(100dvh - 100px);
+    overflow-y: auto;
+  }
+
+  /* ---- Master-Detail Layout (Requests) ------------------------------------- */
+  .master-detail {
+    display: grid;
+    grid-template-columns: minmax(360px, 1fr) minmax(360px, 1fr);
+    gap: var(--space-4);
+    align-items: start;
+  }
+
+  /* ---- Queue Desktop Layout ------------------------------------------------ */
+  .queue-desktop {
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    gap: var(--space-4);
+    align-items: start;
+  }
+
+  /* ---- Interactive States & Focus Rings ------------------------------------ */
+  :focus-visible {
+    outline: 2px solid var(--mw-brand);
+    outline-offset: 2px;
+  }
+
+  /* ---- Hidden Price Badge -------------------------------------------------- */
+  .badge-price-hidden {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding-inline: 6px;
+    padding-block: 2px;
+    font-size: var(--text-xs);
+    background: var(--mw-surface-2);
+    border: 1px solid var(--mw-line);
+    border-radius: 4px;
+    color: var(--mw-ink-3);
+    font-weight: 500;
+  }
+}

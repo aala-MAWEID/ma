@@ -304,6 +304,8 @@ export function Modal({
   )
 }
 
+export { Price, type PriceProps } from './Price'
+
 export function Drawer({
   open,
   onClose,

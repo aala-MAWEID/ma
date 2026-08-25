@@ -1,5 +1,6 @@
 import { PageHeader } from '@/components/shared/PageHeader'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, useMemo } from 'react'
+import { Link } from 'react-router-dom'
 import { useLocale } from '@/contexts/LocaleContext'
 import { useTenantBundle } from '@/contexts/TenantContext'
 import { useToast } from '@/contexts/ToastContext'
@@ -24,6 +25,10 @@ export default function Schedule() {
   const [day, setDay] = useState(todayISO())
   const [rows, setRows] = useState<DayScheduleRow[] | null>(null)
   const [busy, setBusy] = useState(false)
+
+  const activeServices = useMemo(() => bundle.services.filter(s => s.isActive).length, [bundle.services])
+  const activeStaff = useMemo(() => bundle.staff.filter(s => s.isActive).length, [bundle.staff])
+  const isOffline = activeServices === 0 || activeStaff === 0
 
   const load = useCallback(async () => {
     setRows(await data.getDaySchedule(tenantId, day))
@@ -78,6 +83,15 @@ export default function Schedule() {
   return (
     <section className="admin-page" dir="rtl">
       <PageHeader title={t('admin.schedule')} description={t('admin.scheduleSubtitle')} />
+
+      {isOffline && (
+        <div className="alert alert--err mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <p className="m-0 font-medium">{t('admin.offlineBanner')}</p>
+          <Link to={activeServices === 0 ? '/admin/services' : '/admin/staff'} className="btn btn--primary btn--sm whitespace-nowrap">
+            {t('admin.fixNow')}
+          </Link>
+        </div>
+      )}
 
       {!rows ? (
         <div className="page-center">

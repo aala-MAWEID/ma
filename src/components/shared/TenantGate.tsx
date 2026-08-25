@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Outlet, useParams } from 'react-router-dom'
 import { TenantProvider, useTenant } from '@/contexts/TenantContext'
 import { Header } from '@/components/shared/Header'
@@ -5,6 +6,14 @@ import { Footer } from '@/components/shared/Footer'
 import { Spinner, EmptyState } from '@/components/ui'
 import { useLocale } from '@/contexts/LocaleContext'
 import { backend, backendDiagnostics } from '@/data'
+import {
+  isSupabaseConfigured,
+  supabaseNotices,
+  supabaseKeyKind,
+  supabaseAnonKey,
+  supabaseProjectRef,
+  maskKey,
+} from '@/data/supabase/client'
 
 function useSlug(): string {
   const { slug } = useParams<{ slug: string }>()
@@ -13,7 +22,8 @@ function useSlug(): string {
 
 function Failure({ slug }: { slug: string }) {
   const { bundle, loading, error, reload } = useTenant()
-  const { t } = useLocale()
+  const { t, dir } = useLocale()
+  const [copied, setCopied] = useState(false)
 
   if (loading) {
     return (
@@ -25,47 +35,144 @@ function Failure({ slug }: { slug: string }) {
   if (bundle) return null
 
   const code = error ?? 'empty_bundle'
-  const hint =
-    backend !== 'supabase'
-      ? 'التطبيق يعمل حالياً على بيانات وهمية: اضبط VITE_DATA_BACKEND=supabase.'
-      : backendDiagnostics.supabaseProblem
-        ? backendDiagnostics.supabaseProblem
-        : code === 'tenant_not_found'
-          ? 'لا يوجد صالون بهذا المعرّف: تحقق من عمود slug في جدول tenants.'
-          : code === 'forbidden'
-            ? 'قاعدة البيانات رفضت الطلب: تأكد من تنفيذ قسم GRANT/RLS.'
-            : 'تعذّر الاتصال بقاعدة البيانات: راجع الكونسول.'
 
+  const copyDiagnostics = async () => {
+    const diag = {
+      backend,
+      declared: backendDiagnostics.declared,
+      slug,
+      projectRef: supabaseProjectRef,
+      keyKind: supabaseKeyKind,
+      maskedKey: maskKey(supabaseAnonKey),
+      notices: supabaseNotices,
+      errorCode: code,
+      timestamp: new Date().toISOString(),
+    }
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(diag, null, 2))
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2500)
+    } catch {
+      /* ignore clipboard fail */
+    }
+  }
+
+  // 1. Misconfigured build state
+  if (!isSupabaseConfigured) {
+    return (
+      <div className="page-center" style={{ flexDirection: 'column', gap: 16 }}>
+        <EmptyState
+          icon="⚠️"
+          title={t('error.misconfigured_title')}
+          body={t('error.misconfigured_body')}
+        />
+        <div
+          dir={dir}
+          style={{
+            maxWidth: 580,
+            width: '100%',
+            border: '1px solid var(--mw-line, rgba(0,0,0,.12))',
+            borderRadius: 12,
+            padding: 16,
+            fontSize: 14,
+            lineHeight: 1.8,
+            background: 'var(--mw-surface-2, rgba(0,0,0,.02))',
+          }}
+        >
+          <strong>{t('error.diagnostic_title')}:</strong>
+          <ul style={{ margin: '8px 0', paddingInlineStart: 20 }}>
+            {supabaseNotices.map((n, i) => (
+              <li key={i}>{n}</li>
+            ))}
+          </ul>
+          <p style={{ margin: '8px 0', fontWeight: 500, color: 'var(--mw-err, #d32f2f)' }}>
+            {t('error.misconfigured_remediation')}
+          </p>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBlockStart: 12 }}>
+            <button type="button" className="btn btn--sm" onClick={copyDiagnostics}>
+              {copied ? t('error.diagnostics_copied') : t('error.copy_diagnostics')}
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // 2. Unreachable server state
+  if (code === 'network' || code === 'unknown' || code === 'empty_bundle') {
+    return (
+      <div className="page-center" style={{ flexDirection: 'column', gap: 16 }}>
+        <EmptyState
+          icon="📡"
+          title={t('error.unreachable_title')}
+          body={t('error.unreachable_body')}
+        />
+        <div
+          dir={dir}
+          style={{
+            maxWidth: 580,
+            width: '100%',
+            border: '1px solid var(--mw-line, rgba(0,0,0,.12))',
+            borderRadius: 12,
+            padding: 16,
+            fontSize: 14,
+            lineHeight: 1.8,
+            background: 'var(--mw-surface-2, rgba(0,0,0,.02))',
+          }}
+        >
+          <strong>{t('error.diagnostic_title')}:</strong>
+          <ul style={{ margin: '8px 0', paddingInlineStart: 20 }}>
+            <li>{t('error.diagnostic_code')}: <code>{code}</code></li>
+            <li>{t('error.diagnostic_slug')}: <code>{slug}</code></li>
+            <li>{t('error.diagnostic_backend')}: <code>{backend}</code></li>
+          </ul>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBlockStart: 12 }}>
+            <button type="button" className="btn btn--primary btn--sm" onClick={reload}>
+              {t('action.retry')}
+            </button>
+            <button type="button" className="btn btn--sm" onClick={copyDiagnostics}>
+              {copied ? t('error.diagnostics_copied') : t('error.copy_diagnostics')}
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // 3. Not found or not published state
   return (
     <div className="page-center" style={{ flexDirection: 'column', gap: 16 }}>
       <EmptyState
         icon="✕"
-        title={t('error.tenant_not_found')}
-        body={t('error.tenant_not_found_body')}
+        title={t('error.tenant_not_published_title')}
+        body={t('error.tenant_not_published_body')}
       />
       <div
-        dir="rtl"
+        dir={dir}
         style={{
-          maxWidth: 560,
+          maxWidth: 580,
           width: '100%',
-          border: '1px solid rgba(0,0,0,.12)',
+          border: '1px solid var(--mw-line, rgba(0,0,0,.12))',
           borderRadius: 12,
           padding: 16,
           fontSize: 14,
           lineHeight: 1.8,
-          background: 'rgba(0,0,0,.02)',
+          background: 'var(--mw-surface-2, rgba(0,0,0,.02))',
         }}
       >
-        <strong>تشخيص:</strong>
+        <strong>{t('error.diagnostic_title')}:</strong>
         <ul style={{ margin: '8px 0', paddingInlineStart: 20 }}>
-          <li>رمز الخطأ: <code>{code}</code></li>
-          <li>المعرّف المطلوب: <code>{slug}</code></li>
-          <li>مصدر البيانات: <code>{backend}</code> (المعلن: <code>{backendDiagnostics.declared}</code>)</li>
-          <li>رابط سوبابيس: <code>{backendDiagnostics.supabaseUrl}</code></li>
+          <li>{t('error.diagnostic_code')}: <code>{code}</code></li>
+          <li>{t('error.diagnostic_slug')}: <code>{slug}</code></li>
+          <li>{t('error.diagnostic_backend')}: <code>{backend}</code></li>
         </ul>
-        <p style={{ margin: '8px 0' }}>{hint}</p>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button type="button" className="btn" onClick={reload}>إعادة المحاولة</button>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBlockStart: 12 }}>
+          <button type="button" className="btn btn--primary btn--sm" onClick={reload}>
+            {t('action.retry')}
+          </button>
+          <button type="button" className="btn btn--sm" onClick={copyDiagnostics}>
+            {copied ? t('error.diagnostics_copied') : t('error.copy_diagnostics')}
+          </button>
         </div>
       </div>
     </div>

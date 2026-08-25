@@ -1,6 +1,6 @@
 import { useLocale } from '@/contexts/LocaleContext'
 import { useTenantBundle } from '@/contexts/TenantContext'
-import { formatMoney } from '@/lib/money'
+import { Price } from '@/components/ui'
 import { cn } from '@/lib/cn'
 import type { UUID } from '@/types/domain'
 
@@ -11,7 +11,7 @@ export function ServicePicker({
   value: UUID | null
   onPick: (id: UUID) => void
 }) {
-  const { t, locale } = useLocale()
+  const { t } = useLocale()
   const bundle = useTenantBundle()
 
   return (
@@ -33,9 +33,12 @@ export function ServicePicker({
             )}
           </span>
           <span className="service-card__meta">
-            <span className="service-card__price">
-              {formatMoney(service.priceCentimes, bundle.tenant.currency, locale)}
-            </span>
+            <Price
+              className="service-card__price"
+              amountCentimes={service.priceCentimes}
+              service={service}
+              currency={bundle.tenant.currency}
+            />
             <span className="service-card__dur">
               {t('booking.minutes', { n: service.durationMin })}
             </span>

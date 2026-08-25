@@ -1,6 +1,8 @@
 import { useLocale } from '@/contexts/LocaleContext'
-import { formatMoney } from '@/lib/money'
 import { formatDateTime } from '@/lib/time'
+import { Price } from '@/components/ui'
+import { useTenant } from '@/contexts/TenantContext'
+import { priceVisible } from '@/lib/price'
 import type { Service, Slot, Staff } from '@/types/domain'
 
 export function Summary({
@@ -17,7 +19,10 @@ export function Summary({
   currency: string
 }) {
   const { t, locale } = useLocale()
+  const { bundle } = useTenant()
   if (!service) return null
+
+  const isVisible = priceVisible(bundle?.settings, service)
 
   return (
     <aside className="summary" aria-label={t('booking.summary')}>
@@ -46,10 +51,16 @@ export function Summary({
         </div>
       </dl>
 
-      <p className="summary__total">
-        <span>{t('booking.total')}</span>
-        <strong>{formatMoney(service.priceCentimes, currency, locale)}</strong>
-      </p>
+      {isVisible && (
+        <p className="summary__total">
+          <span>{t('booking.total')}</span>
+          <Price
+            amountCentimes={service.priceCentimes}
+            service={service}
+            currency={currency}
+          />
+        </p>
+      )}
     </aside>
   )
 }

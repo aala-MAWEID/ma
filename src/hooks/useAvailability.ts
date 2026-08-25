@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { data } from '@/data'
 import { useAsync } from '@/hooks/useAsync'
 import { dedupeByStart } from '@/lib/availability'
-import { dayKeyOf, minutesOfDay } from '@/lib/time'
+import { dayKeyOf, minutesOfDay, todayKey } from '@/lib/time'
 import { SLOT_PERIODS } from '@/config/constants'
 import type { DayKey, Slot, UUID } from '@/types/domain'
 
@@ -12,6 +12,8 @@ export interface UseAvailabilityArgs {
   staffId: UUID | null
   day: DayKey | null
   timeZone: string
+  /** window start day; defaults to today in tenant time zone */
+  from?: DayKey | null
   /** how many days to fetch at once; the strip needs a window, the grid one day */
   days?: number
   /** collapse duplicate start times when the customer did not pick a person */
@@ -25,14 +27,15 @@ export interface SlotPeriod {
 
 /**
  * Slots for one day, already grouped into morning / afternoon / evening.
- * Fetching a whole window and filtering locally means moving between days in
+ * Fetching a whole window from today and filtering locally means moving between days in
  * the strip is instant instead of a round trip per tap.
  */
 export function useAvailability(args: UseAvailabilityArgs) {
   const { slug, serviceId, staffId, day, timeZone, days = 14, collapse = true } = args
 
-  const enabled = Boolean(serviceId && day)
-  const from = day ?? '1970-01-01'
+  const windowStart = args.from ?? todayKey(timeZone)
+  const enabled = Boolean(serviceId)
+  const from = windowStart
 
   const state = useAsync<Slot[]>(
     () =>

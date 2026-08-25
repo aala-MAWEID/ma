@@ -327,6 +327,12 @@ export interface DataAdapter {
     reason?: string | null
   }): Promise<TimeOffRow>
   deleteTimeOff(tenantId: string, id: string): Promise<void>
+  setServicePriceVisibility(
+    tenantId: string,
+    serviceId: string,
+    hidden: boolean,
+  ): Promise<void>
+  getSettingsSchema(): Promise<Record<string, import('./domain').SettingFieldSchema>>
 }
 
 /** Everything false. The safe default before whoami() has answered. */

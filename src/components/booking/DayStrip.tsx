@@ -4,11 +4,21 @@ import { addDaysToKey, formatDayKey, relativeDayLabel, todayKey } from '@/lib/ti
 import { cn } from '@/lib/cn'
 import type { DayKey } from '@/types/domain'
 
+export interface DayStripProps {
+  value: DayKey
+  onPick: (day: DayKey) => void
+  timeZone: string
+  counts: Record<DayKey, number>
+  days?: number
+  closedDays: Set<DayKey>
+  closedLabels?: Record<DayKey, string>
+  loading?: boolean
+}
+
 /**
  * A horizontal day picker instead of a month grid. On a phone, a calendar
  * month wastes a screen to show 30 days of which 4 matter; a strip shows the
- * next fortnight with the count of free slots on each day, which is the only
- * number the customer is actually looking for.
+ * window with the count of free slots on each day.
  */
 export function DayStrip({
   value,
@@ -17,15 +27,10 @@ export function DayStrip({
   counts,
   days = 14,
   closedDays,
-}: {
-  value: DayKey
-  onPick: (day: DayKey) => void
-  timeZone: string
-  counts: Record<DayKey, number>
-  days?: number
-  closedDays: Set<DayKey>
-}) {
-  const { locale } = useLocale()
+  closedLabels = {},
+  loading = false,
+}: DayStripProps) {
+  const { locale, t } = useLocale()
   const listRef = useRef<HTMLDivElement>(null)
   const start = todayKey(timeZone)
 
@@ -37,9 +42,20 @@ export function DayStrip({
   return (
     <div className="day-strip" ref={listRef} role="tablist">
       {items.map((day) => {
-        const count = counts[day] ?? 0
         const closed = closedDays.has(day)
-        const disabled = closed || count === 0
+        const count = counts[day]
+        const isUnknown = count === undefined && loading
+        const isZero = !closed && !isUnknown && count === 0
+        const disabled = closed || isZero || isUnknown
+
+        const titleText = closed
+          ? (closedLabels[day] || t('common.closedNow'))
+          : isZero
+            ? (t('booking.noSlots') || '0')
+            : count !== undefined
+              ? `${count} ${t('booking.slotsAvailable') || ''}`
+              : ''
+
         return (
           <button
             key={day}
@@ -47,13 +63,19 @@ export function DayStrip({
             type="button"
             aria-selected={value === day}
             disabled={disabled}
-            className={cn('day-chip', value === day && 'is-selected', disabled && 'is-disabled')}
+            title={titleText}
+            className={cn(
+              'day-chip',
+              value === day && 'is-selected',
+              disabled && 'is-disabled',
+              closed && 'is-closed',
+            )}
             onClick={() => onPick(day)}
           >
             <span className="day-chip__dow">{relativeDayLabel(day, timeZone, locale)}</span>
             <span className="day-chip__num">{formatDayKey(day, locale, { day: 'numeric' })}</span>
             <span className="day-chip__count">
-              {disabled ? '—' : count}
+              {closed ? '—' : isUnknown ? '…' : (count ?? 0)}
             </span>
           </button>
         )

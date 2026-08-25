@@ -2,12 +2,11 @@ import { useEffect } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useLocale } from '@/contexts/LocaleContext'
 import { useTenant } from '@/contexts/TenantContext'
-import { EmptyState } from '@/components/ui'
+import { EmptyState, Price } from '@/components/ui'
 import { useOpenNow } from '@/hooks'
-import { formatMoney } from '@/lib/money'
 
 export default function Home() {
-  const { t, locale } = useLocale()
+  const { t, dir } = useLocale()
   const { bundle, tenant, reload, hours } = useTenant()
   const { slug } = useParams()
   const openNow = useOpenNow(bundle)
@@ -24,7 +23,7 @@ export default function Home() {
   const staff = [...bundle.staff].sort((a, b) => a.sortOrder - b.sortOrder)
 
   return (
-    <div className="home-page" dir="rtl">
+    <div className="home-page" dir={dir}>
       <section className="hero">
         <div className="wrap hero__inner">
           {tenant.tagline && <p className="hero__eyebrow">{tenant.tagline}</p>}
@@ -87,9 +86,12 @@ export default function Home() {
                     )}
                   </span>
                   <span className="service-card__meta">
-                    <span className="service-card__price">
-                      {formatMoney(service.priceCentimes, tenant.currency, locale)}
-                    </span>
+                    <Price
+                      className="service-card__price"
+                      amountCentimes={service.priceCentimes}
+                      service={service}
+                      currency={tenant.currency}
+                    />
                     <span className="service-card__dur">
                       {t('booking.minutes', { n: service.durationMin })}
                     </span>
