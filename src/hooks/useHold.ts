@@ -16,6 +16,7 @@ export function useHold(slug: string) {
   const [now, setNow] = useState(() => Date.now())
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<ErrorCode | null>(null)
+  const [detail, setDetail] = useState<string | null>(null)
   const holdRef = useRef<HoldResult | null>(null)
 
   const setBoth = useCallback((next: HoldResult | null) => {
@@ -32,11 +33,11 @@ export function useHold(slug: string) {
     async (serviceId: UUID, staffId: UUID, startsAt: Date): Promise<HoldResult | null> => {
       setPending(true)
       setError(null)
+      setDetail(null)
       try {
         const previous = holdRef.current
         if (previous?.bookingId) await data.releaseHold(previous.bookingId, previous.code)
         setBoth(null)
-
         const next = await data.holdSlot(slug, serviceId, staffId, startsAt)
         if (!next?.bookingId) {
           console.error('[maweid] hold أرجع صفاً بلا bookingId', next)
@@ -47,12 +48,14 @@ export function useHold(slug: string) {
         setNow(Date.now())
         return next
       } catch (e) {
+        const raw = e instanceof Error ? e.message : String(e)
         console.error('[maweid] hold فشل', {
           serviceId, staffId, startsAt,
           code: errorCodeOf(e),
-          raw: e instanceof Error ? e.message : String(e),
+          raw,
         })
         setError(errorCodeOf(e))
+        setDetail(`${errorCodeOf(e)} · ${raw}`)
         return null
       } finally {
         setPending(false)
@@ -74,8 +77,10 @@ export function useHold(slug: string) {
 
   /** بعد تأكيد ناجح: ننسى الحجز دون حذفه من القاعدة. */
   const forget = useCallback(() => setBoth(null), [setBoth])
-
-  const clearError = useCallback(() => setError(null), [])
+  const clearError = useCallback(() => {
+    setError(null)
+    setDetail(null)
+  }, [])
 
   // موقّت عرض واحد: يعمل فقط مع حجز قائم، ويتوقف عند الانتهاء.
   useEffect(() => {
@@ -110,6 +115,7 @@ export function useHold(slug: string) {
     urgent: Boolean(hold) && remainingMs > 0 && remainingMs < 60_000,
     pending,
     error,
+    detail,
     clearError,
     acquire,
     release,

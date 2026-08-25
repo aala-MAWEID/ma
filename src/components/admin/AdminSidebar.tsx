@@ -19,6 +19,8 @@ export interface AdminNavLinkItem {
   badge?: number
 }
 
+import { safeStorage } from '@/lib/safeStorage'
+
 interface AdminSidebarProps {
   links: AdminNavLinkItem[]
   session: Session | null
@@ -43,8 +45,7 @@ export function AdminSidebar({
   const base = `/${slug}/admin`
 
   const [collapsedInternal, setCollapsedInternal] = useState(() => {
-    if (typeof localStorage === 'undefined') return false
-    return localStorage.getItem(COLLAPSED_STORAGE_KEY) === 'true'
+    return safeStorage.get(COLLAPSED_STORAGE_KEY) === 'true'
   })
 
   const isCollapsed = controlledCollapsed !== undefined ? controlledCollapsed : collapsedInternal
@@ -55,21 +56,13 @@ export function AdminSidebar({
     } else {
       const next = !collapsedInternal
       setCollapsedInternal(next)
-      try {
-        localStorage.setItem(COLLAPSED_STORAGE_KEY, String(next))
-      } catch {
-        /* ignore */
-      }
+      safeStorage.set(COLLAPSED_STORAGE_KEY, String(next))
     }
   }
 
   useEffect(() => {
     if (controlledCollapsed === undefined) {
-      try {
-        localStorage.setItem(COLLAPSED_STORAGE_KEY, String(collapsedInternal))
-      } catch {
-        /* ignore */
-      }
+      safeStorage.set(COLLAPSED_STORAGE_KEY, String(collapsedInternal))
     }
   }, [collapsedInternal, controlledCollapsed])
 

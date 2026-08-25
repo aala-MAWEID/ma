@@ -1,5 +1,5 @@
 import { PageHeader } from '@/components/shared/PageHeader'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Button, EmptyState, Field, IconButton, Input, Modal, Spinner } from '@/components/ui'
 import { data } from '@/data'
 import { useLocale } from '@/contexts/LocaleContext'
@@ -38,7 +38,46 @@ export default function StaffPage() {
   const [editingStaff, setEditingStaff] = useState<Partial<StaffWithDetails> | null>(null)
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([])
   const [busy, setBusy] = useState(false)
+  const [photoBusy, setPhotoBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  const onPickPhoto = async (file: File) => {
+    if (!editingStaff?.id) {
+      setError(t('admin.saveStaffFirst'))
+      return
+    }
+    setPhotoBusy(true)
+    setError(null)
+    try {
+      const saved = await data.uploadStaffPhoto(bundle.tenant.id, editingStaff.id, file)
+      setEditingStaff((prev) => (prev ? { ...prev, avatarUrl: saved.avatarUrl } : prev))
+      toast.success(t('common.saved'))
+      await reload()
+      await loadData()
+    } catch (err) {
+      console.error('[maweid] صورة الحلاق فشلت', err)
+      setError(t(errorKey(errorCodeOf(err))))
+    } finally {
+      setPhotoBusy(false)
+    }
+  }
+
+  const onRemovePhoto = async () => {
+    if (!editingStaff?.id) return
+    setPhotoBusy(true)
+    setError(null)
+    try {
+      const saved = await data.setStaffAvatar(bundle.tenant.id, editingStaff.id, null)
+      setEditingStaff((prev) => (prev ? { ...prev, avatarUrl: saved.avatarUrl } : prev))
+      await reload()
+      await loadData()
+    } catch (err) {
+      setError(t(errorKey(errorCodeOf(err))))
+    } finally {
+      setPhotoBusy(false)
+    }
+  }
 
   const loadData = async () => {
     setLoadingList(true)
@@ -179,12 +218,20 @@ export default function StaffPage() {
           {staffList.map((st, index) => (
             <div key={st.id} className="staff-card border rounded-xl p-4 bg-surface shadow-sm">
               <div className="flex items-center gap-3 mb-3">
-                <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold shrink-0"
-                  style={{ backgroundColor: st.color }}
-                >
-                  {st.displayName.charAt(0)}
-                </div>
+                {st.avatarUrl ? (
+                  <img
+                    src={st.avatarUrl}
+                    alt=""
+                    className="staff-thumb"
+                    loading="lazy"
+                    decoding="async"
+                    onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
+                  />
+                ) : (
+                  <div className="staff-thumb staff-thumb--initial" style={{ backgroundColor: st.color }} aria-hidden="true">
+                    {st.displayName.charAt(0)}
+                  </div>
+                )}
                 <div className="flex-1 min-w-0">
                   <h3 className="font-bold text-lg truncate">{st.displayName}</h3>
                   <p className="text-sm opacity-75 truncate">{st.title || t('admin.staffTitle')}</p>
@@ -267,6 +314,36 @@ export default function StaffPage() {
           }}
         >
           {error && <div className="alert alert--err">{error}</div>}
+
+          <Field label={t('admin.staffPhoto')}>
+            <div className="photo-edit">
+              {editingStaff?.avatarUrl ? (
+                <img src={editingStaff.avatarUrl} alt="" className="photo-edit__preview" />
+              ) : (
+                <div className="photo-edit__preview photo-edit__preview--empty" style={{ backgroundColor: editingStaff?.color ?? '#0E7C86' }}>
+                  {(editingStaff?.displayName ?? '؟').charAt(0)}
+                </div>
+              )}
+              <div className="photo-edit__actions">
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/*"
+                  hidden
+                  onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void onPickPhoto(f) }}
+                />
+                <Button size="sm" variant="outline" loading={photoBusy} disabled={!editingStaff?.id} onClick={() => fileRef.current?.click()}>
+                  {editingStaff?.avatarUrl ? t('admin.changePhoto') : t('admin.uploadPhoto')}
+                </Button>
+                {editingStaff?.avatarUrl && (
+                  <Button size="sm" variant="danger" loading={photoBusy} onClick={() => void onRemovePhoto()}>
+                    {t('admin.removePhoto')}
+                  </Button>
+                )}
+                <p className="photo-edit__hint">{!editingStaff?.id ? t('admin.saveStaffFirst') : t('admin.photoHint')}</p>
+              </div>
+            </div>
+          </Field>
 
           <Field label={t('admin.staffName')}>
             <Input

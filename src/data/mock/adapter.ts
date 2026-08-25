@@ -1063,6 +1063,29 @@ export const mockAdapter: DataAdapter = {
   },
 
   // ---- identity -----------------------------------------------------------
+  async setStaffAvatar(tenantId: string, staffId: string, url: string | null): Promise<Staff> {
+    let result: Staff | null = null
+    store.write((d) => {
+      const s = d.staff.find((x) => x.id === staffId && x.tenantId === tenantId)
+      if (s) {
+        s.avatarUrl = url ?? undefined
+        result = s
+      }
+    })
+    if (!result) throw new AppError('staff_not_found')
+    return delay(result)
+  },
+
+  async uploadStaffPhoto(tenantId: string, staffId: string, file: File): Promise<Staff> {
+    const dataUrl = await new Promise<string>((res, rej) => {
+      const r = new FileReader()
+      r.onload = () => res(r.result as string)
+      r.onerror = () => rej(r.error)
+      r.readAsDataURL(file)
+    })
+    return this.setStaffAvatar(tenantId, staffId, dataUrl)
+  },
+
   async updateTenantIdentity(tenantId: string, patch: Record<string, unknown>): Promise<void> {
     store.write((d) => {
       if (d.tenant.id === tenantId) {

@@ -3,6 +3,7 @@ import { Button, Spinner } from '@/components/ui'
 import { StatusPill } from '@/components/shared/StatusPill'
 import { data } from '@/data'
 import { useAsync } from '@/hooks'
+import { copyText } from '@/lib/copyText'
 import { useLocale } from '@/contexts/LocaleContext'
 import { useTenantBundle } from '@/contexts/TenantContext'
 import { formatDateTime } from '@/lib/time'
@@ -81,7 +82,7 @@ export default function Confirmation() {
           </Link>
           <Button
             variant="outline"
-            onClick={() => void navigator.clipboard?.writeText(booking.code)}
+            onClick={() => void copyText(booking.code)}
           >
             {booking.code}
           </Button>

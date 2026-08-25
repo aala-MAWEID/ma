@@ -141,6 +141,10 @@ export const RPC_DEFINITIONS: readonly RpcSignature[] = Object.freeze([
     ],
   },
   {
+    name: 'set_staff_avatar',
+    args: ['p_tenant_id', 'p_staff_id', 'p_url'],
+  },
+  {
     name: 'upsert_service',
     args: [
       'p_tenant_id',
@@ -174,7 +178,7 @@ export const RPC_DEFINITIONS: readonly RpcSignature[] = Object.freeze([
   { name: 'get_day_schedule', args: ['p_tenant_id', 'p_day'] },
   { name: 'my_bookings', args: ['p_slug'] },
   { name: 'cancel_my_booking', args: ['p_code', 'p_reason'] },
-  { name: 'set_week_hours', args: ['p_tenant_id', 'p_rows'] },
+  { name: 'set_week_hours', args: ['p_tenant_id', 'p_staff_id', 'p_week'] },
   { name: 'list_closed_dates', args: ['p_tenant_id'] },
   {
     name: 'upsert_closed_date',

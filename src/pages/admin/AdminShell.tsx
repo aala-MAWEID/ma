@@ -17,6 +17,7 @@ import {
 import { data } from '@/data'
 import type { AuthStatus } from '@/data/adapter'
 import { cn } from '@/lib/cn'
+import { safeStorage } from '@/lib/safeStorage'
 
 const COLLAPSED_STORAGE_KEY = 'maweid.nav.collapsed'
 
@@ -37,18 +38,13 @@ export default function AdminShell() {
   const [lastSynced, setLastSynced] = useState<Date>(() => new Date())
 
   const [isCollapsed, setIsCollapsed] = useState(() => {
-    if (typeof localStorage === 'undefined') return false
-    return localStorage.getItem(COLLAPSED_STORAGE_KEY) === 'true'
+    return safeStorage.get(COLLAPSED_STORAGE_KEY) === 'true'
   })
 
   const toggleCollapsed = () => {
     setIsCollapsed((prev) => {
       const next = !prev
-      try {
-        localStorage.setItem(COLLAPSED_STORAGE_KEY, String(next))
-      } catch {
-        /* ignore */
-      }
+      safeStorage.set(COLLAPSED_STORAGE_KEY, String(next))
       return next
     })
   }

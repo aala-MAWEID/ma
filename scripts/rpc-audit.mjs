@@ -16,15 +16,16 @@ if (!fs.existsSync(manifestPath)) {
 }
 
 const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'))
-const allManifestRpcNames = new Set([
-  ...manifest.publicFunctions.map((f) => f.name),
-  ...manifest.adminFunctions.map((f) => f.name),
-])
+const manifestFns = new Map()
+
+for (const fn of [...(manifest.publicFunctions || []), ...(manifest.adminFunctions || [])]) {
+  manifestFns.set(fn.name, fn.args || [])
+}
 
 const rpcNamesContent = fs.readFileSync(rpcNamesPath, 'utf8')
 
 let errors = 0
-for (const name of allManifestRpcNames) {
+for (const [name] of manifestFns.entries()) {
   if (!rpcNamesContent.includes(`name: '${name}'`) && !rpcNamesContent.includes(`name: "${name}"`)) {
     console.error(`❌ RPC '${name}' from manifest is missing in src/data/supabase/rpcNames.ts`)
     errors++
@@ -36,4 +37,4 @@ if (errors > 0) {
   process.exit(1)
 }
 
-console.log('✅ RPC parity audit passed! All manifest functions are matched.')
+console.log(`✅ RPC parity audit passed! All ${manifestFns.size} manifest functions are matched.`)

@@ -129,12 +129,13 @@ const { session } = useAuth()
       <div className="booking__grid">
         <div className="booking__main">
           {flow.error && (
-            <div className="alert alert--err" role="alert" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
-              <span>{t(errorKey(flow.error))}</span>
-              {(import.meta.env.DEV || session) && (
-                <span style={{ fontSize: 11, opacity: 0.6, fontFamily: 'monospace' }}>
-                  {flow.error}
-                </span>
+            <div className="alert alert--err" role="alert">
+              <p>{t(errorKey(flow.error))}</p>
+              {flow.errorDetail && (import.meta.env.DEV || new URLSearchParams(location.search).has('debug')) && (
+                <details className="alert__detail">
+                  <summary>{t('common.technicalDetails')}</summary>
+                  <code dir="ltr">{flow.errorDetail}</code>
+                </details>
               )}
             </div>
           )}

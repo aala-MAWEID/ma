@@ -48,6 +48,8 @@ export interface MockDb {
   session: Session | null
 }
 
+import { safeStorage } from '@/lib/safeStorage'
+
 const KEY = 'maweid.db.v1'
 const DATE_FIELDS = /(At|startsAt|endsAt)$/
 
@@ -78,9 +80,8 @@ function revive(_key: string, value: unknown): unknown {
 }
 
 function load(): MockDb {
-  if (typeof localStorage === 'undefined') return fresh()
   try {
-    const raw = localStorage.getItem(KEY)
+    const raw = safeStorage.get(KEY)
     if (!raw) return fresh()
     return JSON.parse(raw, revive) as MockDb
   } catch {
@@ -92,9 +93,8 @@ let db: MockDb = load()
 const listeners = new Set<() => void>()
 
 function persist(): void {
-  if (typeof localStorage === 'undefined') return
   try {
-    localStorage.setItem(KEY, JSON.stringify(db))
+    safeStorage.set(KEY, JSON.stringify(db))
   } catch {
     /* quota or private mode — memory still works */
   }

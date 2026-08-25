@@ -1,5 +1,6 @@
 import { supabase, supabaseConfigProblem } from './client'
 import { fromPostgrest, AppError } from '../errors'
+import { toSquareJpeg } from '@/lib/image'
 import {
   NO_PERMS,
   type AdminBookingInput,
@@ -328,7 +329,10 @@ export const supabaseAdapter: DataAdapter = {
       | { booking_id?: string; code?: string; expires_at?: string }
       | undefined
 
-    if (!row?.booking_id || !row.code) throw new AppError('slot_taken')
+    if (!row?.booking_id || !row.code) {
+      console.error('[maweid] hold_slot لم يُرجع صفاً', { out })
+      throw new AppError('slot_taken')
+    }
 
     const parsed = row.expires_at ? new Date(row.expires_at) : null
     const expiresAt =
@@ -740,6 +744,42 @@ export const supabaseAdapter: DataAdapter = {
     return camelizeDeep<Staff>(out)
   },
 
+  async setStaffAvatar(tenantId: string, staffId: string, url: string | null): Promise<Staff> {
+    const out = await rpc<any>('set_staff_avatar', {
+      p_tenant_id: tenantId,
+      p_staff_id: staffId,
+      p_url: url,
+    })
+    return camelizeDeep<Staff>(out)
+  },
+
+  async uploadStaffPhoto(tenantId: string, staffId: string, file: File): Promise<Staff> {
+    const blob = await toSquareJpeg(file)
+    const path = `${tenantId}/${staffId}-${Date.now()}.jpg`
+
+    const { error: upErr } = await supabase.storage.from('staff-photos').upload(path, blob, {
+      contentType: 'image/jpeg',
+      cacheControl: '3600',
+      upsert: true,
+    })
+    if (upErr) {
+      console.error('[maweid] رفع صورة الحلاق فشل', upErr)
+      throw new AppError('unknown', `storage_upload: ${upErr.message}`)
+    }
+
+    const { data: pub } = supabase.storage.from('staff-photos').getPublicUrl(path)
+    const saved = await this.setStaffAvatar(tenantId, staffId, pub.publicUrl)
+
+    // best effort: drop older files of the same staff member
+    const { data: list } = await supabase.storage.from('staff-photos').list(tenantId, { limit: 100 })
+    const stale = (list ?? [])
+      .map((o) => `${tenantId}/${o.name}`)
+      .filter((p) => p.startsWith(`${tenantId}/${staffId}-`) && p !== path)
+    if (stale.length) await supabase.storage.from('staff-photos').remove(stale)
+
+    return saved
+  },
+
   async upsertService(tenantId: string, i: Record<string, unknown>): Promise<Service> {
     const out = await rpc<any>('upsert_service', {
       p_tenant_id: tenantId,
@@ -763,7 +803,7 @@ export const supabaseAdapter: DataAdapter = {
       p_display_name: patch.displayName ?? null,
       p_phone: patch.phone ?? null,
       p_locale: patch.locale ?? null,
-      p_avatar_url: null,
+      p_avatar_url: patch.avatarUrl ?? null,
     })
   },
 

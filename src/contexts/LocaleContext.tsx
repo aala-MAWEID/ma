@@ -9,6 +9,7 @@ import {
 } from 'react'
 import type { Locale } from '@/data/domain'
 import { translate } from '@/i18n'
+import { safeStorage } from '@/lib/safeStorage'
 
 interface LocaleValue {
   locale: Locale
@@ -21,8 +22,7 @@ const LocaleContext = createContext<LocaleValue | null>(null)
 const STORAGE_KEY = 'maweid.locale'
 
 function initial(fallback: Locale): Locale {
-  if (typeof localStorage === 'undefined') return fallback
-  const saved = localStorage.getItem(STORAGE_KEY)
+  const saved = safeStorage.get(STORAGE_KEY)
   return saved === 'ar' || saved === 'fr' || saved === 'en' ? saved : fallback
 }
 
@@ -43,11 +43,7 @@ export function LocaleProvider({
 
   const setLocale = useCallback((next: Locale) => {
     setLocaleState(next)
-    try {
-      localStorage.setItem(STORAGE_KEY, next)
-    } catch {
-      /* ignore */
-    }
+    safeStorage.set(STORAGE_KEY, next)
   }, [])
 
   const value = useMemo<LocaleValue>(

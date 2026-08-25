@@ -193,6 +193,13 @@
   .turn-tracker__dot { animation: none; }
 }
 
-.rtl-flip { [dir='rtl'] & { transform: scaleX(-1); } }
+.rtl-flip { }
+[dir='rtl'] .rtl-flip { transform: scaleX(-1); }
 .spinner { animation: spin 1s linear infinite; }
 @keyframes spin { 100% { transform: rotate(360deg); } }
+
+@supports (-webkit-touch-callout: none) {
+  .input, .select, .textarea, input, select, textarea {
+    font-size: max(16px, var(--text-sm));
+  }
+}

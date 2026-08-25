@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { GoogleButton } from '@/components/shared/GoogleButton'
+import { copyText } from '@/lib/copyText'
 import { useAuth } from '@/contexts/AuthContext'
 import { useLocale } from '@/contexts/LocaleContext'
 import { useTenantBundle } from '@/contexts/TenantContext'
@@ -19,6 +20,19 @@ export default function Login() {
 
   const [status, setStatus] = useState<AuthStatus | null>(null)
   const [busy, setBusy] = useState(false)
+  const [copiedLink, setCopiedLink] = useState(false)
+
+  const inApp = useMemo(() => {
+    return /(FBAN|FBAV|Instagram|Line|Twitter|TikTok|Snapchat|WhatsApp|wv\))/i.test(navigator.userAgent)
+  }, [])
+
+  const handleCopyLink = async () => {
+    const ok = await copyText(window.location.href)
+    if (ok) {
+      setCopiedLink(true)
+      setTimeout(() => setCopiedLink(false), 2000)
+    }
+  }
 
   const redirectTo = useMemo(
     () => window.location.origin + import.meta.env.BASE_URL + slug + '/admin',
@@ -68,10 +82,19 @@ export default function Login() {
         <p className="auth-card__subtitle">{t('admin.loginSubtitle')}</p>
 
         {!session ? (
-          <div style={{ display: 'grid', gap: 12, justifyItems: 'center' }}>
-            <GoogleButton redirectTo={redirectTo} block />
-            <p className="signin__hint">{t('admin.googleOnlyHint')}</p>
-          </div>
+          inApp ? (
+            <div className="alert alert--warn" style={{ display: 'grid', gap: 8, textAlign: 'center' }}>
+              <p>{t('admin.openInBrowser')}</p>
+              <Button variant="outline" size="sm" onClick={() => void handleCopyLink()}>
+                {copiedLink ? t('common.copied') : t('common.copyLink')}
+              </Button>
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gap: 12, justifyItems: 'center' }}>
+              <GoogleButton redirectTo={redirectTo} block />
+              <p className="signin__hint">{t('admin.googleOnlyHint')}</p>
+            </div>
+          )
         ) : status?.canClaim ? (
           <div style={{ display: 'grid', gap: 12 }}>
             <p className="auth-card__subtitle">

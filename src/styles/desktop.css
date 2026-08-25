@@ -23,6 +23,7 @@
   .admin--desktop {
     display: grid;
     grid-template-columns: 264px minmax(0, 1fr);
+    min-block-size: 100vh;
     min-block-size: 100dvh;
     background: var(--mw-surface-2);
     transition: grid-template-columns 0.2s cubic-bezier(0.16, 1, 0.3, 1);
@@ -35,7 +36,8 @@
   .admin-sidebar {
     position: sticky;
     inset-block-start: 0;
-    block-size: 100dvh;
+    block-size: 100vh;
+  block-size: 100dvh;
     display: flex;
     flex-direction: column;
     background: var(--mw-surface);
@@ -437,6 +439,7 @@
     border: 1px solid var(--mw-line);
     border-radius: 12px;
     padding: var(--admin-card-pad);
+    max-block-size: calc(100vh - 100px);
     max-block-size: calc(100dvh - 100px);
     overflow-y: auto;
   }
@@ -477,4 +480,19 @@
     color: var(--mw-ink-3);
     font-weight: 500;
   }
+
+  .save-bar {
+    position: sticky;
+    inset-block-end: 0;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--space-3);
+    margin-block-start: var(--space-4);
+    padding: var(--space-3) var(--space-4);
+    border-block-start: 1px solid var(--mw-line);
+    background: color-mix(in srgb, var(--mw-surface) 92%, transparent);
+  }
+  .save-bar__state { margin-inline-end: auto; font-size: 13px; color: var(--mw-ink-3); }
+
 }

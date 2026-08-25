@@ -32,6 +32,8 @@ export default function Hours() {
   const tenantId = bundle.tenant.id
 
   const [week, setWeek] = useState<Day[] | null>(null)
+  const [baseline, setBaseline] = useState<string>('')
+  const dirty = week !== null && JSON.stringify(week) !== baseline
   const [closed, setClosed] = useState<Closed[]>([])
   const [newDay, setNewDay] = useState('')
   const [newLabel, setNewLabel] = useState('')
@@ -58,17 +60,26 @@ export default function Hours() {
   }, [bundle.workingHours])
 
   useEffect(() => {
-    setWeek(build())
+    const fresh = build()
+    setWeek(fresh)
+    setBaseline(JSON.stringify(fresh))
     data
       .listClosedDates(tenantId)
       .then((r) => setClosed(r as Closed[]))
       .catch((e) => console.error('[maweid] listClosedDates failed', e))
   }, [build, tenantId])
 
+  useEffect(() => {
+    if (!dirty) return
+    const onLeave = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = '' }
+    window.addEventListener('beforeunload', onLeave)
+    return () => window.removeEventListener('beforeunload', onLeave)
+  }, [dirty])
+
   function patch(weekday: number, index: number, key: keyof Win, value: string) {
     if (!week) return
     const min = toMin(value)
-    if (min === null) return
+    if (min === null) { toast.error(t('error.invalid_hours')); return }
     const next = week.map((d) =>
       d.weekday !== weekday
         ? d
@@ -108,6 +119,7 @@ export default function Hours() {
     setBusy(true)
     try {
       await data.setWeekHours(tenantId, null, week)
+      setBaseline(JSON.stringify(week))
       await reload()
       toast.success(t('common.saved'))
     } catch (e) {
@@ -173,6 +185,7 @@ export default function Hours() {
                 {t('admin.addWindow')}
               </Button>
             </div>
+
             {d.windows.length === 0 ? (
               <p style={{ fontSize: 13, opacity: 0.7, margin: '8px 0 0' }}>{t('common.closed')}</p>
             ) : (
@@ -202,6 +215,20 @@ export default function Hours() {
             )}
           </article>
         ))}
+      </div>
+
+      <div className="save-bar" role="region" aria-label={t('common.save')}>
+        <span className="save-bar__state">
+          {dirty ? t('common.unsavedChanges') : t('common.allSaved')}
+        </span>
+        <div className="save-bar__actions">
+          <Button variant="quiet" disabled={!dirty || busy} onClick={() => { const fresh = build(); setWeek(fresh); setBaseline(JSON.stringify(fresh)) }}>
+            {t('common.discard')}
+          </Button>
+          <Button variant="primary" disabled={!dirty} loading={busy} onClick={() => void save()}>
+            {t('common.saveHours')}
+          </Button>
+        </div>
       </div>
 
       <h2 style={{ marginTop: 24 }}>{t('admin.closedDates')}</h2>

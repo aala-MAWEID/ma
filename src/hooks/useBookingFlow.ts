@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { data } from '@/data'
 import { errorCodeOf, type ErrorCode } from '@/data/errors'
 import { useHold } from '@/hooks/useHold'
@@ -34,9 +34,16 @@ export function useBookingFlow() {
   })
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<ErrorCode | null>(null)
+  const [errorDetail, setErrorDetail] = useState<string | null>(null)
   const [result, setResult] = useState<Booking | null>(null)
 
   const holdApi = useHold(bundle.tenant.slug)
+
+  // Mirror hold API error
+  useEffect(() => {
+    if (holdApi.error) setError(holdApi.error)
+    if (holdApi.detail) setErrorDetail(holdApi.detail)
+  }, [holdApi.error, holdApi.detail])
 
   const service: Service | null = useMemo(
     () => bundle.services.find((s) => s.id === serviceId) ?? null,
@@ -90,6 +97,7 @@ export function useBookingFlow() {
       const acquired = await holdApi.acquire(serviceId, next.staffId, next.start)
       if (!acquired) {
         setError(holdApi.error ?? 'slot_taken')
+        setErrorDetail(holdApi.detail ?? null)
         return
       }
       setSlot(next)
@@ -136,8 +144,10 @@ export function useBookingFlow() {
         setStep('done')
         return { ok: true as const }
       } catch (e) {
+        const raw = e instanceof Error ? e.message : String(e)
         const code = errorCodeOf(e)
         setError(code)
+        setErrorDetail(`${code} · ${raw}`)
         if (code === 'hold_expired' || code === 'hold_already_used' || code === 'slot_taken') {
           setSlot(null)
           setStep('time')
@@ -208,6 +218,7 @@ export function useBookingFlow() {
     attemptSubmit,
     submitting,
     error,
+    errorDetail,
     result,
     hold: holdApi,
     chooseService,

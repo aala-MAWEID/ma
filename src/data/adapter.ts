@@ -264,6 +264,8 @@ export interface DataAdapter {
       logoUrl?: string
     },
   ): Promise<void>
+  setStaffAvatar(tenantId: string, staffId: string, url: string | null): Promise<Staff>
+  uploadStaffPhoto(tenantId: string, staffId: string, file: File): Promise<Staff>
   upsertStaff(
     tenantId: string,
     input: {

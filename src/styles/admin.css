@@ -4,6 +4,7 @@
    ========================================================================== */
 
 .admin {
+  min-block-size: 100vh;
   min-block-size: 100dvh;
   background: var(--mw-surface-2);
 }
@@ -26,6 +27,7 @@
 .admin__aside {
   position: sticky;
   inset-block-start: 0;
+  block-size: 100vh;
   block-size: 100dvh;
   padding: var(--space-4);
   background: var(--mw-surface);
@@ -268,6 +270,7 @@
   display: grid;
   grid-template-columns: var(--cal-gutter) repeat(auto-fit, minmax(140px, 1fr));
   overflow-y: auto;
+  max-block-size: 68vh;
   max-block-size: 68dvh;
 }
 
@@ -629,6 +632,56 @@
 }
 
 .admin-head-mobile { display: none; }
+
+/* ---- Staff photos ---- */
+.staff-thumb {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+.staff-thumb--initial {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 700;
+  font-size: 16px;
+}
+.photo-edit {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-block-end: var(--space-2);
+}
+.photo-edit__preview {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 2px solid var(--mw-line);
+}
+.photo-edit__preview--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 700;
+  font-size: 24px;
+}
+.photo-edit__actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+}
+.photo-edit__hint {
+  font-size: var(--text-xs);
+  color: var(--mw-ink-3);
+  margin: 0;
+}
 @media (max-width: 860px) {
   .desktop-only { display: none !important; }
   .admin-head-mobile {

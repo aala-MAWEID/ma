@@ -16,6 +16,7 @@
     z-index: 40;
     padding-block-start: var(--safe-t);
     background: color-mix(in srgb, var(--mw-surface) 92%, transparent);
+    -webkit-backdrop-filter: saturate(180%) blur(12px);
     backdrop-filter: saturate(180%) blur(12px);
   }
   .site-head__inner {
@@ -366,6 +367,7 @@ body.is-locked {
     padding: var(--space-3);
     background: color-mix(in srgb, var(--mw-surface) 92%, transparent);
     border-block-start: 1px solid var(--mw-line);
+    -webkit-backdrop-filter: blur(10px);
     backdrop-filter: blur(10px);
   }
   .booking__actions .btn {
@@ -384,6 +386,7 @@ body.is-locked {
   .modal {
     inline-size: 100%;
     max-inline-size: none;
+    max-block-size: 92vh;
     max-block-size: 92dvh;
     border-start-start-radius: 22px;
     border-start-end-radius: 22px;
@@ -391,6 +394,7 @@ body.is-locked {
     border-end-end-radius: 0;
   }
   .modal__body {
+    max-block-size: 62vh;
     max-block-size: 62dvh;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
@@ -449,6 +453,24 @@ body.is-locked {
     flex-wrap: wrap;
     gap: var(--space-2);
   }
+
+  .save-bar {
+    position: sticky;
+    inset-block-end: calc(var(--tabbar-h) + var(--safe-b));
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    margin-block-start: var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--mw-line);
+    border-radius: 14px;
+    background: var(--mw-surface);
+    box-shadow: 0 -6px 18px rgb(0 0 0 / .08);
+  }
+  .save-bar__state { font-size: 13px; color: var(--mw-ink-3); }
+
 }
 
 /* وضع التطبيق المثبّت: احترام الشاشة الكاملة */
@@ -457,3 +479,4 @@ body.is-locked {
     padding-block-start: calc(var(--safe-t) + 6px);
   }
 }
+

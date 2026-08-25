@@ -24,7 +24,8 @@ export default defineConfig({
     port: 4173,
   },
   build: {
-    target: 'es2022',
+    target: ['es2020', 'safari15', 'chrome87', 'firefox78', 'edge88'],
+    cssTarget: ['safari15', 'chrome87', 'firefox78', 'edge88'],
     cssCodeSplit: true,
     sourcemap: false,
     rollupOptions: {

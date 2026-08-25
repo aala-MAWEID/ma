@@ -5,6 +5,7 @@ import { Header } from '@/components/shared/Header'
 import { Footer } from '@/components/shared/Footer'
 import { Spinner, EmptyState } from '@/components/ui'
 import { useLocale } from '@/contexts/LocaleContext'
+import { copyText } from '@/lib/copyText'
 import { backend, backendDiagnostics } from '@/data'
 import {
   isSupabaseConfigured,
@@ -48,12 +49,10 @@ function Failure({ slug }: { slug: string }) {
       errorCode: code,
       timestamp: new Date().toISOString(),
     }
-    try {
-      await navigator.clipboard.writeText(JSON.stringify(diag, null, 2))
+    const ok = await copyText(JSON.stringify(diag, null, 2))
+    if (ok) {
       setCopied(true)
       setTimeout(() => setCopied(false), 2500)
-    } catch {
-      /* ignore clipboard fail */
     }
   }
 
