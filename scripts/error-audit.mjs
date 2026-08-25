@@ -16,7 +16,8 @@ if (!fs.existsSync(codesPath)) {
   process.exit(1)
 }
 
-const codes = JSON.parse(fs.readFileSync(codesPath, 'utf8'))
+const codesData = JSON.parse(fs.readFileSync(codesPath, 'utf8'))
+const codes = codesData.database || []
 const errorsTs = fs.readFileSync(errorsTsPath, 'utf8')
 const i18n = fs.readFileSync(i18nPath, 'utf8')
 

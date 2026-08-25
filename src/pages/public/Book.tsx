@@ -12,6 +12,7 @@ import { useBookingFlow, useAvailability } from '@/hooks'
 import { useLocale } from '@/contexts/LocaleContext'
 import { useTenant, useTenantBundle } from '@/contexts/TenantContext'
 import { useToast } from '@/contexts/ToastContext'
+import { useAuth } from "@/contexts/AuthContext"
 import { BOOKING_STEPS } from '@/config/constants'
 import { errorKey } from '@/data/errors'
 
@@ -21,6 +22,7 @@ export default function Book() {
   const toast = useToast()
   const { reload } = useTenant()
   const bundle = useTenantBundle()
+const { session } = useAuth()
   const navigate = useNavigate()
   const { slug } = useParams()
   const [params] = useSearchParams()
@@ -127,9 +129,14 @@ export default function Book() {
       <div className="booking__grid">
         <div className="booking__main">
           {flow.error && (
-            <p className="alert alert--err" role="alert">
-              {t(errorKey(flow.error))}
-            </p>
+            <div className="alert alert--err" role="alert" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
+              <span>{t(errorKey(flow.error))}</span>
+              {(import.meta.env.DEV || session) && (
+                <span style={{ fontSize: 11, opacity: 0.6, fontFamily: 'monospace' }}>
+                  {flow.error}
+                </span>
+              )}
+            </div>
           )}
 
           {flow.step === 'service' && (

@@ -39,13 +39,19 @@ export function useHold(slug: string) {
 
         const next = await data.holdSlot(slug, serviceId, staffId, startsAt)
         if (!next?.bookingId) {
-          setError('unknown')
+          console.error('[maweid] hold أرجع صفاً بلا bookingId', next)
+          setError('slot_taken')
           return null
         }
         setBoth(next)
         setNow(Date.now())
         return next
       } catch (e) {
+        console.error('[maweid] hold فشل', {
+          serviceId, staffId, startsAt,
+          code: errorCodeOf(e),
+          raw: e instanceof Error ? e.message : String(e),
+        })
         setError(errorCodeOf(e))
         return null
       } finally {

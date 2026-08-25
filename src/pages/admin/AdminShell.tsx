@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import { Navigate, Outlet, useParams, useLocation, Link } from 'react-router-dom'
 import { AdminNav } from '@/components/admin/AdminNav'
+import { AdminErrorBoundary } from '@/components/admin/AdminErrorBoundary'
 import { useAuth } from '@/contexts/AuthContext'
 import { useLocale } from '@/contexts/LocaleContext'
 import { useTenantBundle } from '@/contexts/TenantContext'
@@ -253,7 +254,9 @@ export default function AdminShell() {
         )}
 
         <main className="admin__main">
-          <Outlet />
+          <AdminErrorBoundary key={location.pathname}>
+            <Outlet />
+          </AdminErrorBoundary>
         </main>
       </div>
     </div>

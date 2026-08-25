@@ -321,7 +321,7 @@ export const ar = {
   'error.service_has_bookings': 'لا يمكن حذف الخدمة لوجود مواعيد مرتبطة بها.',
   'error.unsupported': 'هذه الميزة غير مدعومة.',
   'error.network': 'تعذر الاتصال. تحقق من الإنترنت.',
-  'error.unknown': 'حدث خطأ غير متوقع.',
+  'error.unknown': 'لم يكتمل حجز الوقت. جرّب وقتاً آخر أو أعد المحاولة.',
 
   'auth.continueWithGoogle': 'المتابعة بواسطة جوجل',
   'admin.loginSubtitle': 'دخول أصحاب المحل والموظفين',
@@ -734,7 +734,7 @@ export const fr: Record<TranslationKey, string> = {
   'error.service_has_bookings': 'Impossible de supprimer ce service : des rendez-vous lui sont associés.',
   'error.unsupported': 'Cette fonctionnalité n’est pas prise en charge.',
   'error.network': 'Connexion impossible.',
-  'error.unknown': 'Une erreur est survenue.',
+  'error.unknown': 'La réservation n\'a pas pu aboutir. Veuillez essayer un autre créneau ou réessayer.',
 
   'auth.continueWithGoogle': 'Continuer avec Google',
   'admin.loginSubtitle': 'Connexion des propriétaires et du personnel',

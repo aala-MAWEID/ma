@@ -1,0 +1,12 @@
+bad_order
+booking_not_found
+forbidden
+invalid_day
+invalid_hours
+invalid_weekday
+service_has_bookings
+service_not_found
+shop_already_claimed
+staff_has_bookings
+staff_not_found
+tenant_not_found

@@ -36,10 +36,61 @@ import type {
 } from '../domain'
 
 /* ------------------------------------------------------------------ *
+ *  Realtime: one channel per tenant, shared by every subscriber.
+ *
+ *  supabase.channel(topic) returns the EXISTING channel when the topic is
+ *  already registered, and .on('postgres_changes', ...) throws once that
+ *  channel has subscribed. Two screens sharing a topic therefore crashed
+ *  the route. We register the topic exactly once and fan out locally.
+ * ------------------------------------------------------------------ */
+type BookingsHub = {
+  channel: ReturnType<typeof supabase.channel>
+  listeners: Set<() => void>
+}
+const bookingHubs = new Map<string, BookingsHub>()
+
+function bookingsHub(tenantId: string): BookingsHub {
+  const existing = bookingHubs.get(tenantId)
+  if (existing) return existing
+
+  const listeners = new Set<() => void>()
+  const channel = supabase.channel(`bookings:${tenantId}:${Date.now().toString(36)}`)
+
+  channel.on(
+    'postgres_changes',
+    { event: '*', schema: 'public', table: 'bookings', filter: `tenant_id=eq.${tenantId}` },
+    () => {
+      for (const fn of Array.from(listeners)) {
+        try {
+          fn()
+        } catch (e) {
+          console.error('[maweid] realtime listener فشل', e)
+        }
+      }
+    },
+  )
+  channel.subscribe((status) => {
+    if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+      console.warn('[maweid] realtime bookings', status, '— التحديث اللحظي معطّل، والشاشة تعمل')
+    }
+  })
+
+  const hub: BookingsHub = { channel, listeners }
+  bookingHubs.set(tenantId, hub)
+  return hub
+}
+
+/* ------------------------------------------------------------------ *
  *  أدوات مشتركة
  * ------------------------------------------------------------------ */
 
 const camelCache = new Map<string, string>()
+
+function toIso(v: Date | string | number): string {
+  const d = v instanceof Date ? v : new Date(v)
+  if (!Number.isFinite(d.getTime())) throw new AppError('unknown', `bad starts_at: ${String(v)}`)
+  return d.toISOString()
+}
 
 function toCamel(key: string): string {
   const hit = camelCache.get(key)
@@ -269,7 +320,7 @@ export const supabaseAdapter: DataAdapter = {
       p_slug: pSlug,
       p_service_id: pServiceId,
       p_staff_id: pStaffId,
-      p_starts_at: pStartsAt.toISOString(),
+      p_starts_at: toIso(pStartsAt),
     })
 
     // الدالة returns table ⇒ مصفوفة. وأسماء الأعمدة: booking_id, code, expires_at.
@@ -400,7 +451,7 @@ export const supabaseAdapter: DataAdapter = {
     return toAgendaItem(
       await rpc('reschedule_by_code', {
         p_code: code,
-        p_starts_at: nextStartsAt.toISOString(),
+        p_starts_at: toIso(nextStartsAt),
         p_staff_id: targetStaff,
       }),
     )
@@ -410,8 +461,8 @@ export const supabaseAdapter: DataAdapter = {
   async getAgenda(tenantId: string, from: Date, to: Date): Promise<AgendaItem[]> {
     const rows = await rpc<any[]>('get_agenda', {
       p_tenant_id: tenantId,
-      p_from: from.toISOString(),
-      p_to: to.toISOString(),
+      p_from: toIso(from),
+      p_to: toIso(to),
     })
     return (rows ?? []).map(toAgendaItem)
   },
@@ -445,7 +496,7 @@ export const supabaseAdapter: DataAdapter = {
     return toAgendaItem(
       await rpc('admin_move_booking', {
         p_booking_id: bookingId,
-        p_starts_at: startsAt.toISOString(),
+        p_starts_at: toIso(startsAt),
         p_staff_id: targetStaff,
       }),
     )
@@ -457,7 +508,7 @@ export const supabaseAdapter: DataAdapter = {
         p_tenant_id: i.tenantId,
         p_service_id: i.serviceId,
         p_staff_id: i.staffId,
-        p_starts_at: i.startsAt.toISOString(),
+        p_starts_at: toIso(i.startsAt),
         p_full_name: i.fullName,
         p_phone: i.phone,
         p_email: i.email ?? null,
@@ -542,21 +593,23 @@ export const supabaseAdapter: DataAdapter = {
   },
 
   subscribeBookings(tenantId: string, onChange: () => void) {
-    const channel = supabase
-      .channel(`bookings:${tenantId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'bookings',
-          filter: `tenant_id=eq.${tenantId}`,
-        },
-        () => onChange(),
-      )
-      .subscribe()
+    let hub: BookingsHub
+    try {
+      hub = bookingsHub(tenantId)
+    } catch (e) {
+      // Realtime is an enhancement, never a requirement: a failure here must
+      // not blank a screen. The caller keeps its manual reload path.
+      console.error('[maweid] تعذر الاشتراك اللحظي', e)
+      return () => {}
+    }
+
+    hub.listeners.add(onChange)
     return () => {
-      void supabase.removeChannel(channel)
+      hub.listeners.delete(onChange)
+      if (hub.listeners.size === 0) {
+        bookingHubs.delete(tenantId)
+        void supabase.removeChannel(hub.channel)
+      }
     }
   },
 
@@ -845,8 +898,8 @@ export const supabaseAdapter: DataAdapter = {
       p_tenant_id: input.tenantId,
       p_id: input.id ?? null,
       p_staff_id: input.staffId ?? null,
-      p_starts_at: input.startsAt.toISOString(),
-      p_ends_at: input.endsAt.toISOString(),
+      p_starts_at: toIso(input.startsAt),
+      p_ends_at: toIso(input.endsAt),
       p_reason: input.reason ?? null,
     })) as TimeOffRow
   },
