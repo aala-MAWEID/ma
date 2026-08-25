@@ -94,10 +94,11 @@ export function useBookingFlow() {
     async (next: Slot) => {
       if (!serviceId) return
       setError(null)
-      const acquired = await holdApi.acquire(serviceId, next.staffId, next.start)
-      if (!acquired) {
-        setError(holdApi.error ?? 'slot_taken')
-        setErrorDetail(holdApi.detail ?? null)
+      setErrorDetail(null)
+      const res = await holdApi.acquire(serviceId, next.staffId, next.start)
+      if (!res.ok) {
+        setError(res.error)
+        setErrorDetail(res.detail)
         return
       }
       setSlot(next)
@@ -169,7 +170,14 @@ export function useBookingFlow() {
     // الحجز القائم أو إعادة حجز فورية، دون قراءة الحالة بعد await
     let active = holdApi.hold
     if (!active || holdApi.expired) {
-      active = await holdApi.acquire(serviceId, slot.staffId, slot.start)
+      const res = await holdApi.acquire(serviceId, slot.staffId, slot.start)
+      if (res.ok) {
+        active = res.hold
+      } else {
+        setError(res.error)
+        setErrorDetail(res.detail)
+        return { ok: false as const, reason: 'expired' as const }
+      }
     }
     if (!active?.bookingId || !active.code) {
       return { ok: false as const, reason: 'expired' as const }

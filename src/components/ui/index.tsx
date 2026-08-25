@@ -32,6 +32,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
   return (
     <button
       ref={ref}
+      type="button"
       className={cn('btn', `btn--${variant}`, `btn--${size}`, block && 'btn--block', className)}
       disabled={disabled || loading}
       data-loading={loading ? 'true' : undefined}

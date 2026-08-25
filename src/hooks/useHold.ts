@@ -11,6 +11,10 @@ import type { UUID } from '@/types/domain'
  * من خلاله، فكانت أول دورة عرض بعد الحجز ترى 0 وتُعلن الانتهاء فوراً.
  * الآن: مصدر الحقيقة الوحيد هو hold.expiresAt، والموقّت مجرد مُحدِّث عرض.
  */
+export type AcquireResult =
+  | { ok: true; hold: HoldResult }
+  | { ok: false; error: ErrorCode; detail: string }
+
 export function useHold(slug: string) {
   const [hold, setHold] = useState<HoldResult | null>(null)
   const [now, setNow] = useState(() => Date.now())
@@ -30,7 +34,7 @@ export function useHold(slug: string) {
   const expired = Boolean(hold) && validExpiry && expiresMs <= now
 
   const acquire = useCallback(
-    async (serviceId: UUID, staffId: UUID, startsAt: Date): Promise<HoldResult | null> => {
+    async (serviceId: UUID, staffId: UUID, startsAt: Date): Promise<AcquireResult> => {
       setPending(true)
       setError(null)
       setDetail(null)
@@ -41,22 +45,29 @@ export function useHold(slug: string) {
         const next = await data.holdSlot(slug, serviceId, staffId, startsAt)
         if (!next?.bookingId) {
           console.error('[maweid] hold أرجع صفاً بلا bookingId', next)
-          setError('slot_taken')
-          return null
+          const errCode: ErrorCode = 'slot_taken'
+          const d = 'hold_slot returned row without bookingId'
+          setError(errCode)
+          setDetail(d)
+          return { ok: false, error: errCode, detail: d }
         }
         setBoth(next)
         setNow(Date.now())
-        return next
+        return { ok: true, hold: next }
       } catch (e) {
         const raw = e instanceof Error ? e.message : String(e)
+        const code = errorCodeOf(e)
         console.error('[maweid] hold فشل', {
-          serviceId, staffId, startsAt,
-          code: errorCodeOf(e),
+          serviceId,
+          staffId,
+          startsAt,
+          code,
           raw,
         })
-        setError(errorCodeOf(e))
-        setDetail(`${errorCodeOf(e)} · ${raw}`)
-        return null
+        const d = `${code} · ${raw}`
+        setError(code)
+        setDetail(d)
+        return { ok: false, error: code, detail: d }
       } finally {
         setPending(false)
       }

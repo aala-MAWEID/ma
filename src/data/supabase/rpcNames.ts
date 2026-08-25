@@ -179,6 +179,7 @@ export const RPC_DEFINITIONS: readonly RpcSignature[] = Object.freeze([
   { name: 'my_bookings', args: ['p_slug'] },
   { name: 'cancel_my_booking', args: ['p_code', 'p_reason'] },
   { name: 'set_week_hours', args: ['p_tenant_id', 'p_staff_id', 'p_week'] },
+  { name: 'set_hours_mode', args: ['p_tenant_id', 'p_mode', 'p_show_hours'] },
   { name: 'list_closed_dates', args: ['p_tenant_id'] },
   {
     name: 'upsert_closed_date',

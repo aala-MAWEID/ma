@@ -248,6 +248,11 @@ export interface DataAdapter {
     tenantId: string,
     patch: Partial<TenantSettings>,
   ): Promise<TenantSettings>
+  setHoursMode(
+    tenantId: string,
+    mode: 'scheduled' | 'always_open',
+    showHours: boolean,
+  ): Promise<void>
   updateTenantIdentity(
     tenantId: string,
     patch: {

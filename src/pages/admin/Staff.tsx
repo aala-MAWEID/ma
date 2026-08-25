@@ -146,7 +146,7 @@ export default function StaffPage() {
       })
 
       if (saved.id) {
-        await data.setStaffServices(bundle.tenant.id, saved.id, selectedServiceIds).catch(() => {})
+        await data.setStaffServices(bundle.tenant.id, saved.id, selectedServiceIds)
       }
 
       toast.success(t('common.saved'))
@@ -242,6 +242,12 @@ export default function StaffPage() {
                   {st.isActive ? t('common.active') : t('common.inactive')}
                 </span>
               </div>
+
+              {st.isActive && bundle.staffServices.filter((ss) => ss.staffId === st.id).length === 0 && (
+                <div className="alert alert--warn py-1 px-2 text-xs mb-3">
+                  {t('admin.noServicesLinkedWarning')}
+                </div>
+              )}
 
               {perms.edit_staff && (
                 <div className="flex items-center justify-between gap-2 pt-3 border-t border-border flex-wrap">

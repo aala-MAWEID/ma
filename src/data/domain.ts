@@ -118,6 +118,8 @@ export interface TenantSettings {
   queueEnabled?: boolean
   queueMaxSize?: number
   showPrices?: boolean
+  hoursMode?: 'scheduled' | 'always_open'
+  showHours?: boolean
 }
 
 export interface Staff {

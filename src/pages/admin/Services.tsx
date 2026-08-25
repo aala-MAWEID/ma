@@ -219,6 +219,11 @@ export default function ServicesPage() {
                   <td>
                     <div className="font-semibold">{s.name}</div>
                     {s.nameFr && <div className="text-xs opacity-60">{s.nameFr}</div>}
+                    {s.isActive && bundle.staffServices.filter((ss) => ss.serviceId === s.id && bundle.staff.some((st) => st.id === ss.staffId && st.isActive)).length === 0 && (
+                      <div className="text-xs text-amber-600 dark:text-amber-400 font-medium mt-1">
+                        ⚠️ {t('admin.noStaffForServiceWarning')}
+                      </div>
+                    )}
                   </td>
                   <td className="tabular-nums">
                     ⏱ {s.durationMin} {t('common.min')}

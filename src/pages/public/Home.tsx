@@ -126,25 +126,31 @@ export default function Home() {
         </>
       )}
 
-      {hours.length > 0 && (
+      {bundle.settings.showHours !== false && hours.length > 0 && (
         <section className="wrap section">
           <h2 className="section__title">{t('admin.hours')}</h2>
-          <div className="hours-list" style={{ maxWidth: 400, margin: '0 auto' }}>
-            {hours.map((h, i) => (
-              <div
-                key={i}
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  padding: '12px 0',
-                  borderBottom: '1px solid var(--border)',
-                }}
-              >
-                <span style={{ fontWeight: 500 }}>{h.label}</span>
-                <span style={{ color: 'var(--text-subtle)' }}>{h.value}</span>
-              </div>
-            ))}
-          </div>
+          {bundle.settings.hoursMode === 'always_open' ? (
+            <p className="text-center font-medium opacity-80 py-4">
+              {dir === 'rtl' ? 'مفتوح على مدار 24 ساعة طيلة أيام الأسبوع' : 'Ouvert 24h/24, 7j/7'}
+            </p>
+          ) : (
+            <div className="hours-list" style={{ maxWidth: 400, margin: '0 auto' }}>
+              {hours.map((h, i) => (
+                <div
+                  key={i}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    padding: '12px 0',
+                    borderBottom: '1px solid var(--border)',
+                  }}
+                >
+                  <span style={{ fontWeight: 500 }}>{h.label}</span>
+                  <span style={{ color: 'var(--text-subtle)' }}>{h.value}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </section>
       )}
     </div>

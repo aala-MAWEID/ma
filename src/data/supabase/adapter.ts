@@ -324,30 +324,35 @@ export const supabaseAdapter: DataAdapter = {
       p_starts_at: toIso(pStartsAt),
     })
 
-    // الدالة returns table ⇒ مصفوفة. وأسماء الأعمدة: booking_id, code, expires_at.
-    const row = (Array.isArray(out) ? out[0] : out) as
-      | { booking_id?: string; code?: string; expires_at?: string }
-      | undefined
+    // hold_slot returns one composite bookings row; PostgREST delivers a single object.
+    const row = (Array.isArray(out) ? out[0] : out) as Record<string, any> | undefined
 
-    if (!row?.booking_id || !row.code) {
-      console.error('[maweid] hold_slot لم يُرجع صفاً', { out })
-      throw new AppError('slot_taken')
+    const bookingId = row?.id ?? row?.booking_id ?? row?.bookingId
+    const code = row?.code
+    const expiryRaw = row?.hold_expires_at ?? row?.expires_at ?? row?.holdExpiresAt
+
+    if (!bookingId || !code) {
+      console.error('[maweid] hold_slot لم يُرجع هويّة أو رمزا', { out, keys: Object.keys(row ?? {}) })
+      throw new AppError('unsupported', 'hold_slot shape: ' + Object.keys(row ?? {}).join(','))
     }
 
-    const parsed = row.expires_at ? new Date(row.expires_at) : null
+    const parsed = expiryRaw ? new Date(expiryRaw) : null
     const expiresAt =
       parsed && Number.isFinite(parsed.getTime())
         ? parsed
         : new Date(Date.now() + 10 * 60_000)
 
+    const booking = row ? toBooking(row) : undefined
+
     return {
-      bookingId: row.booking_id,
-      code: row.code,
+      bookingId,
+      code,
       expiresAt,
       holdExpiresAt: expiresAt,
       startsAt: pStartsAt,
       serviceId: pServiceId,
       staffId: pStaffId,
+      booking,
     } as HoldResult
   },
 
@@ -382,6 +387,7 @@ export const supabaseAdapter: DataAdapter = {
         p_full_name: input.fullName,
         p_phone: input.phone,
         p_email: input.email ?? null,
+        p_locale: input.locale ?? 'ar',
         p_notes: input.notes ?? null,
       }),
     )
@@ -395,6 +401,7 @@ export const supabaseAdapter: DataAdapter = {
         p_full_name: input.fullName,
         p_phone: input.phone,
         p_email: input.email ?? null,
+        p_locale: input.locale ?? 'ar',
         p_notes: input.notes ?? null,
       }),
     )
@@ -587,6 +594,18 @@ export const supabaseAdapter: DataAdapter = {
       p_patch: snake,
     })
     return camelizeDeep<TenantSettings>(out)
+  },
+
+  async setHoursMode(
+    tenantId: string,
+    mode: 'scheduled' | 'always_open',
+    showHours: boolean,
+  ): Promise<void> {
+    await rpc('set_hours_mode', {
+      p_tenant_id: tenantId,
+      p_mode: mode,
+      p_show_hours: showHours,
+    })
   },
 
   async updateTenantSettings(

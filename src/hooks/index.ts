@@ -30,6 +30,7 @@ export function useOpenNow(bundle: TenantBundle | null): boolean {
   const now = new Date()
   const today = todayKey(tz, now)
   if (bundle.closedDates.some((c) => c.day === today)) return false
+  if (bundle.settings?.hoursMode === 'always_open') return true
   const minutes = minutesOfDay(now, tz)
   return bundle.workingHours
     .filter((h) => h.staffId === null && h.weekday === weekdayOf(today))

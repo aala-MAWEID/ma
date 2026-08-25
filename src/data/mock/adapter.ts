@@ -826,6 +826,19 @@ export const mockAdapter: DataAdapter = {
     return delay(updated)
   },
 
+  async setHoursMode(
+    tenantId: string,
+    mode: 'scheduled' | 'always_open',
+    showHours: boolean,
+  ): Promise<void> {
+    store.write((d) => {
+      if (d.tenant.id === tenantId) {
+        d.settings = { ...d.settings, hoursMode: mode, showHours }
+      }
+    })
+    return delay(undefined)
+  },
+
   // ---- queue --------------------------------------------------------------
   async getQueue(tenantId: string, _day?: string): Promise<QueueTicket[]> {
     const s = store.read()
