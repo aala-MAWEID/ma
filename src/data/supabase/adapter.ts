@@ -491,10 +491,11 @@ export const supabaseAdapter: DataAdapter = {
     })
   },
 
-  async adminDeleteBooking(tenantId: string, id: string): Promise<void> {
+  async adminDeleteBooking(tenantId: string, id: string, reason?: string): Promise<void> {
     await rpc('admin_delete_booking', {
       p_tenant_id: tenantId,
       p_booking_id: id,
+      p_reason: reason ?? null,
     })
   },
 
@@ -574,7 +575,7 @@ export const supabaseAdapter: DataAdapter = {
     staffId?: string | null
     fullName: string
     phone: string
-    email?: string
+    notes?: string | null
   }): Promise<QueueTicket> {
     const raw = await rpc<any>('queue_join', {
       p_slug: input.tenantId,
@@ -582,7 +583,7 @@ export const supabaseAdapter: DataAdapter = {
       p_staff_id: input.staffId ?? null,
       p_full_name: input.fullName,
       p_phone: input.phone,
-      p_email: input.email ?? null,
+      p_notes: input.notes ?? null,
     })
     return toTicket(raw)
   },

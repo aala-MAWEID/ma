@@ -116,8 +116,8 @@ describe('computeAvailability', () => {
       }),
     )
     const starts = withBuffer.map((s) => s.start.getTime())
-    // 09:15 + 30 + 15 buffer = 10:00, which now touches the booking
-    expect(starts).not.toContain(dayKeyToUtc(MONDAY, 555, TZ).getTime())
+    // 09:30 (570) + 30 + 15 buffer = 10:15, which now overlaps the 10:00 booking
+    expect(starts).not.toContain(dayKeyToUtc(MONDAY, 570, TZ).getTime())
   })
 
   it('respects time off that belongs to the whole business', () => {

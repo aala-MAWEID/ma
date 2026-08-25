@@ -172,7 +172,7 @@ export interface DataAdapter {
     staffId?: string | null
     fullName: string
     phone: string
-    email?: string
+    notes?: string | null
   }): Promise<QueueTicket>
 
   queueJoin(
@@ -236,7 +236,7 @@ export interface DataAdapter {
     staffId?: string,
   ): Promise<AgendaItem>
   adminCancelBooking(tenantId: string, id: string, reason?: string): Promise<void>
-  adminDeleteBooking(tenantId: string, id: string): Promise<void>
+  adminDeleteBooking(tenantId: string, id: string, reason?: string): Promise<void>
   subscribeBookings(tenantId: string, onChange: () => void): () => void
 
   // settings & master data

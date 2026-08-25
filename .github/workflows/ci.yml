@@ -18,6 +18,10 @@ jobs:
 
       - run: npm install --no-audit --no-fund
 
+      - name: No committed Supabase secrets
+        run: |
+          ! grep -rEn "sb_(publishable|secret)_[A-Za-z0-9_-]{10,}|eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9" src/ .env.example
+
       - name: RTL audit (non blocking)
         run: npm run audit:rtl || true
 

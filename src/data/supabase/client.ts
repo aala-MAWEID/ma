@@ -9,13 +9,6 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js'
  *  - عند غياب متغيّرات البيئة يستعمل قيم المشروع التجريبي المدمجة أدناه.
  * ------------------------------------------------------------------ */
 
-/** قيم المشروع التجريبي — للإنتاج احذفهما واعتمد على .env فقط. */
-const DEMO_SUPABASE_URL = 'https://yklhriwhzzjgwnqinrni.supabase.co'
-const DEMO_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_eqAaOf31QvpHubb2xHtd8A_tfNTee56'
-/** مفتاح anon القديم (JWT) — بديل يعمل مع كل الإصدارات إن عُطّلت المفاتيح الجديدة. */
-const DEMO_SUPABASE_ANON_JWT =
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlrbGhyaXdoenpqZ3ducWlucm5pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc0Mjg0NzgsImV4cCI6MjEwMzAwNDQ3OH0.Zy-cp-JJPfZvAUKxO53ePCzbNjwm36NFUiibeLXdCLE'
-
 const rawUrl = String(import.meta.env.VITE_SUPABASE_URL ?? '').trim()
 const rawKey = String(import.meta.env.VITE_SUPABASE_ANON_KEY ?? '').trim()
 
@@ -84,44 +77,40 @@ const envUrlOk = urlLooksValid(envUrl)
 const envKeyKind = detectKeyKind(rawKey)
 const envKeyOk = envKeyKind === 'publishable' || envKeyKind === 'anon-jwt'
 
-export const supabaseUrl = envUrlOk ? envUrl : DEMO_SUPABASE_URL
-/** عند غياب متغيّرات البيئة: المفتاح الجديد أولاً، ثم anon القديم. */
-const demoKey =
-  detectKeyKind(DEMO_SUPABASE_PUBLISHABLE_KEY) === 'publishable'
-    ? DEMO_SUPABASE_PUBLISHABLE_KEY
-    : DEMO_SUPABASE_ANON_JWT
-
-export const supabaseAnonKey = envKeyOk ? rawKey : demoKey
+export const supabaseUrl = envUrlOk ? envUrl : ''
+export const supabaseAnonKey = envKeyOk ? rawKey : ''
 export const supabaseKeyKind = detectKeyKind(supabaseAnonKey)
-export const supabaseProjectRef = supabaseUrl.slice(ORIGIN_PREFIX.length).split('.')[0]
+export const supabaseProjectRef = supabaseUrl
+  ? supabaseUrl.slice(ORIGIN_PREFIX.length).split('.')[0]
+  : ''
 
 const notices: string[] = []
 
 if (!rawUrl) {
-  notices.push('VITE_SUPABASE_URL فارغ — استُعمل رابط المشروع المدمج.')
+  notices.push('VITE_SUPABASE_URL فارغ — يرجى ضبطه في .env.')
 } else if (!envUrlOk) {
   notices.push(
-    `VITE_SUPABASE_URL غير صالح ("${rawUrl}") — استُعمل الرابط المدمج. القيمة الصحيحة هي أصل المشروع فقط بدون /rest/v1.`,
+    `VITE_SUPABASE_URL غير صالح ("${rawUrl}"). القيمة الصحيحة هي أصل المشروع فقط بدون /rest/v1.`,
   )
 } else if (envUrl !== rawUrl.replace(/\/+$/, '')) {
   notices.push(`تم تنظيف الرابط تلقائياً: ${rawUrl} ← ${envUrl}`)
 }
 
 if (!rawKey) {
-  notices.push('VITE_SUPABASE_ANON_KEY فارغ — استُعمل المفتاح العام المدمج.')
+  notices.push('VITE_SUPABASE_ANON_KEY فارغ — يرجى ضبطه في .env.')
 } else if (envKeyKind === 'secret' || envKeyKind === 'service-role') {
   notices.push(
     '⚠️ القيمة الموضوعة في VITE_SUPABASE_ANON_KEY مفتاح سرّي — تم تجاهله لأسباب أمنية. استعمل sb_publishable_… فقط.',
   )
 } else if (!envKeyOk) {
-  notices.push('VITE_SUPABASE_ANON_KEY بصيغة غير معروفة — استُعمل المفتاح العام المدمج.')
+  notices.push('VITE_SUPABASE_ANON_KEY بصيغة غير معروفة.')
 }
 
 export const supabaseNotices: string[] = notices
 
 export const urlProblem: string | null = urlLooksValid(supabaseUrl)
   ? null
-  : `رابط سوبابيس غير صالح: ${supabaseUrl}`
+  : `رابط سوبابيس غير صالح: ${supabaseUrl || '(فارغ)'}`
 
 export const keyProblem: string | null =
   supabaseKeyKind === 'publishable' || supabaseKeyKind === 'anon-jwt'
@@ -140,16 +129,20 @@ if (!isSupabaseConfigured) {
   )
 }
 
-export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: true,
-    storageKey: 'maweid.auth',
+export const supabase: SupabaseClient = createClient(
+  supabaseUrl || ORIGIN_PREFIX + 'unconfigured.invalid',
+  supabaseAnonKey || 'unconfigured',
+  {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+      storageKey: 'maweid.auth',
+    },
+    realtime: { params: { eventsPerSecond: 4 } },
+    global: { headers: { 'x-client-info': 'maweid-web' } },
   },
-  realtime: { params: { eventsPerSecond: 4 } },
-  global: { headers: { 'x-client-info': 'maweid-web' } },
-})
+)
 
 /** يرمي خطأ واضحاً قبل أي نداء شبكة عندما تكون الإعدادات ناقصة. */
 export function assertSupabaseReady(): void {

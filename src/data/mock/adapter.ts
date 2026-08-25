@@ -554,8 +554,8 @@ export const mockAdapter: DataAdapter = {
     await this.cancelBookingAdmin(id, reason ?? null)
   },
 
-  async adminDeleteBooking(_tenantId: string, id: string): Promise<void> {
-    await this.deleteBooking(id)
+  async adminDeleteBooking(_tenantId: string, id: string, reason?: string): Promise<void> {
+    await this.deleteBooking(id, reason)
   },
 
   async rescheduleBooking(
@@ -894,7 +894,7 @@ export const mockAdapter: DataAdapter = {
     staffId?: string | null
     fullName: string
     phone: string
-    email?: string
+    notes?: string | null
   }): Promise<QueueTicket> {
     const booking = await this.queueJoin(
       input.tenantId,
@@ -902,6 +902,7 @@ export const mockAdapter: DataAdapter = {
       input.staffId ?? null,
       input.fullName,
       input.phone,
+      input.notes ?? null,
     )
     const list = await this.getQueue(input.tenantId)
     return list.find((t) => t.id === booking.id) ?? list[0]!
