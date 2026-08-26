@@ -1,4 +1,5 @@
 import { useNavigate, useLocation, Link } from 'react-router-dom'
+import type { ReactNode } from 'react'
 import { ChevronIcon, CloseIcon, RefreshIcon } from '@/components/ui/icons'
 import { cn } from '@/lib/cn'
 
@@ -13,13 +14,13 @@ export function PageHeader({
   actions,
 }: { 
   title: string
-  description?: string
+  description?: string | ReactNode
   onClosePath?: string
   onRefresh?: () => void
   refreshing?: boolean
   onBack?: () => void
   hideBack?: boolean
-  actions?: React.ReactNode
+  actions?: ReactNode
 }) {
   const navigate = useNavigate()
   const location = useLocation()

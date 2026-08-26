@@ -13,6 +13,7 @@
 
 import type {
   AdminBookingInput,
+  AdminPulse,
   AvailabilityQuery,
   ConfirmInput,
   DataAdapter,
@@ -1188,6 +1189,24 @@ export const mockAdapter: DataAdapter = {
   // ---- live ---------------------------------------------------------------
   subscribeBookings(_tenantId: string, onChange: () => void): () => void {
     return store.subscribe(onChange)
+  },
+
+  subscribePulse(_tenantId: string, onPing: () => void): () => void {
+    return store.subscribe(onPing)
+  },
+
+  async adminPulse(tenantId: string): Promise<AdminPulse> {
+    const q = await this.getQueue(tenantId)
+    const waiting = q.filter((t) => t.status !== 'serving').length
+    const serving = q.filter((t) => t.status === 'serving').length
+    return {
+      waiting,
+      serving,
+      pending: 0,
+      unread: 0,
+      shopOpen: true,
+      serverTime: new Date().toISOString(),
+    }
   },
 
   async signInWithGoogle(): Promise<void> {

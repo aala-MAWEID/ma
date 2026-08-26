@@ -5,11 +5,12 @@ import { useTenant } from '@/contexts/TenantContext'
 import { useToast } from '@/contexts/ToastContext'
 import { useDevice } from '@/hooks/useDevice'
 import { useGuestFeed } from '@/hooks/useGuestFeed'
+import { useLivePulse } from '@/hooks'
 import { data } from '@/data'
 import { clearDeviceToken, isIos, isStandalone } from '@/lib/device'
 import { installAudioUnlock, osPermission, requestOsNotifications, unlockAudio } from '@/lib/notify'
 import { formatRelative, formatTime } from '@/lib/time'
-import { Button, Input } from '@/components/ui'
+import { Button, Input, LiveNumber } from '@/components/ui'
 
 const minutesUntil = (iso?: string | null): number | null => {
   if (!iso) return null
@@ -24,6 +25,7 @@ export function NotificationCenter() {
   // useTenant().tenant THROWS while the bundle is loading, so read through bundle.
   const { bundle } = useTenant()
   const slug = bundle?.tenant.slug ?? ''
+  const tenantId = bundle?.tenant.id ?? null
   const timeZone = bundle?.tenant.timeZone ?? 'Africa/Casablanca'
   const toast = useToast()
 
@@ -34,31 +36,14 @@ export function NotificationCenter() {
   const [code, setCode] = useState('')
   const [busy, setBusy] = useState(false)
   const [perm, setPerm] = useState<string>(() => osPermission())
-  const [counts, setCounts] = useState<{ waiting: number; serving: number; myTicketNo: number | null } | null>(null)
+
+  const { snap: pulseCounts } = useLivePulse(tenantId, () => data.queueCounts(slug, token), { enabled: open && !!slug })
+  const counts = pulseCounts ? { waiting: pulseCounts.waiting ?? 0, serving: pulseCounts.serving ?? 0, myTicketNo: pulseCounts.myTicketNo ?? null } : null
 
   const goToQueue = (code?: string) => {
     setOpen(false)
     navigate(`/${slug}/queue${code ? `?code=${encodeURIComponent(code)}` : ''}`)
   }
-
-  useEffect(() => {
-    if (!open || !slug) return
-    let alive = true
-    const tick = async () => {
-      try {
-        const c = await data.queueCounts(slug, token)
-        if (alive) setCounts({ waiting: c.waiting ?? 0, serving: c.serving ?? 0, myTicketNo: c.myTicketNo ?? null })
-      } catch {
-        /* panel must never crash on a counter read */
-      }
-    }
-    void tick()
-    const id = window.setInterval(tick, 15_000)
-    return () => {
-      alive = false
-      window.clearInterval(id)
-    }
-  }, [open, slug, token])
 
   useEffect(() => {
     installAudioUnlock()
@@ -210,9 +195,17 @@ export function NotificationCenter() {
 
             {counts && (
               <button type="button" className="nc-counts" onClick={() => goToQueue()}>
-                <span className="nc-counts__main">{t('queue.waitingNow', { count: String(counts.waiting) })}</span>
+                <span className="nc-counts__main">
+                  {t('queue.waitingNow', { count: '###' })
+                    .split('###')
+                    .map((part, i) => (i === 1 ? <LiveNumber key={i} value={counts.waiting} /> : part))}
+                </span>
                 {counts.myTicketNo !== null && (
-                  <span className="nc-counts__mine">{t('queue.myPosition', { pos: String(counts.myTicketNo) })}</span>
+                  <span className="nc-counts__mine">
+                    {t('queue.myPosition', { pos: '###' })
+                      .split('###')
+                      .map((part, i) => (i === 1 ? <LiveNumber key={i} value={counts.myTicketNo} /> : part))}
+                  </span>
                 )}
                 <span className="nc-counts__cta">{t('queue.openLive')}</span>
               </button>

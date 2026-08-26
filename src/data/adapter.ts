@@ -58,6 +58,15 @@ export type {
 
 export type Decision = 'approve' | 'reject' | 'confirm' | 'decline' | 'complete' | 'no_show'
 
+export type AdminPulse = {
+  waiting: number
+  serving: number
+  pending: number
+  unread: number
+  shopOpen: boolean
+  serverTime: string
+}
+
 export type ConfirmInput = {
   bookingId: string
   code: string
@@ -324,6 +333,9 @@ export interface DataAdapter {
   adminCancelBooking(tenantId: string, id: string, reason?: string): Promise<void>
   adminDeleteBooking(tenantId: string, id: string, reason?: string): Promise<void>
   subscribeBookings(tenantId: string, onChange: () => void): () => void
+  /** Same transport as subscribeBookings, named for counts-only consumers. */
+  subscribePulse(tenantId: string, onPing: () => void): () => void
+  adminPulse(tenantId: string): Promise<AdminPulse>
 
   // settings & master data
   updateTenantSettings(

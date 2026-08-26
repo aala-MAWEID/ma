@@ -232,3 +232,70 @@ export function SearchIcon(props: IconProps) {
   )
 }
 
+export function MoreIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <circle cx="5" cy="12" r="1.6" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none" />
+      <circle cx="19" cy="12" r="1.6" fill="currentColor" stroke="none" />
+    </Icon>
+  )
+}
+
+export function PhoneIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M6.6 3h3l1.5 4-2 1.4a12 12 0 0 0 5.5 5.5l1.4-2 4 1.5v3a2 2 0 0 1-2.2 2A16.5 16.5 0 0 1 4.6 5.2A2 2 0 0 1 6.6 3Z" />
+    </Icon>
+  )
+}
+
+export function WhatsAppIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M12 3a9 9 0 0 0-7.7 13.6L3 21l4.5-1.2A9 9 0 1 0 12 3Z" />
+      <path d="M9 9.5c0 3 2.5 5.5 5.5 5.5l1-1.5-2-1-1 1a4.5 4.5 0 0 1-2-2l1-1-1-2-1.5 1Z" />
+    </Icon>
+  )
+}
+
+export function ArrowUpIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M12 19V5" />
+      <path d="M6 11l6-6 6 6" />
+    </Icon>
+  )
+}
+
+export function ArrowDownIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M12 5v14" />
+      <path d="M6 13l6 6 6-6" />
+    </Icon>
+  )
+}
+
+export function HashIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M9 4 7 20" />
+      <path d="M17 4l-2 16" />
+      <path d="M4 9h16" />
+      <path d="M3 15h16" />
+    </Icon>
+  )
+}
+
+export function ChairIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M6 4h12v7H6z" />
+      <path d="M5 11h14l-1 5H6z" />
+      <path d="M8 16v4" />
+      <path d="M16 16v4" />
+    </Icon>
+  )
+}
+

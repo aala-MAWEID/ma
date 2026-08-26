@@ -316,6 +316,7 @@ export function Modal({
 }
 
 export { Price, type PriceProps } from './Price'
+export { LiveNumber, type LiveNumberProps } from './LiveNumber'
 
 export function Drawer({
   open,

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Button, Field, Input, Select, Spinner, Modal } from '@/components/ui'
+import { Button, Field, Input, Select, Spinner, Modal, LiveNumber } from '@/components/ui'
 import { data } from '@/data'
 import { useLocale } from '@/contexts/LocaleContext'
 import { useTenant, useTenantBundle } from '@/contexts/TenantContext'
@@ -11,6 +11,7 @@ import { errorCodeOf, errorKey } from '@/data/errors'
 import { localDeviceToken } from '@/lib/device'
 import { claimCode, useDevice } from '@/hooks/useDevice'
 import { useGuestFeed } from '@/hooks/useGuestFeed'
+import { useLivePulse } from '@/hooks'
 import type { QueueCounts } from '@/data/guest'
 
 const minutesUntil = (iso?: string | null): number | null => {
@@ -42,9 +43,8 @@ export default function QueueLive() {
   const focusCode = params.get('code')
   const ticketRef = useRef<HTMLDivElement | null>(null)
 
-  const [counts, setCounts] = useState<QueueCounts | null>(null)
-  const [loading, setLoading] = useState(true)
-  const timer = useRef<number | null>(null)
+  const { snap: counts } = useLivePulse(bundle.tenant.id, () => data.queueCounts(slug, token))
+  const loading = counts === null
 
   const [showJoinModal, setShowJoinModal] = useState(false)
   const [serviceId, setServiceId] = useState(bundle.services[0]?.id ?? '')
@@ -54,48 +54,6 @@ export default function QueueLive() {
   const [notes, setNotes] = useState('')
   const [joining, setJoining] = useState(false)
   const [joinError, setJoinError] = useState<string | null>(null)
-
-  const loadCounts = useCallback(async () => {
-    try {
-      const next = await data.queueCounts(slug, token)
-      setCounts(next)
-    } catch (err) {
-      console.error(err)
-    } finally {
-      setLoading(false)
-    }
-  }, [slug, token])
-
-  // Adaptive polling: 6s while I am waiting, 20s otherwise, paused when hidden.
-  useEffect(() => {
-    let stopped = false
-
-    const tick = async () => {
-      if (stopped) return
-      await loadCounts()
-      if (stopped) return
-      const mine = counts?.myCode
-      const ms = document.hidden ? 30_000 : mine ? 6_000 : 20_000
-      timer.current = window.setTimeout(() => void tick(), ms)
-    }
-    void tick()
-
-    const unsub = data.subscribeBookings(bundle.tenant.id, () => {
-      void loadCounts()
-    })
-    const onVisible = () => {
-      if (!document.hidden) void loadCounts()
-    }
-    document.addEventListener('visibilitychange', onVisible)
-
-    return () => {
-      stopped = true
-      if (timer.current) window.clearTimeout(timer.current)
-      unsub()
-      document.removeEventListener('visibilitychange', onVisible)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bundle.tenant.id, loadCounts])
 
   useEffect(() => {
     const myCode = counts?.myCode
@@ -134,7 +92,7 @@ export default function QueueLive() {
 
       setShowJoinModal(false)
       toast(t('queue.joinedSuccess'), 'ok')
-      await Promise.all([loadCounts(), guest.reload()])
+      await guest.reload()
     } catch (err) {
       setJoinError(t(errorKey(errorCodeOf(err))))
     } finally {
@@ -246,18 +204,22 @@ export default function QueueLive() {
                 if (mins !== null && mins > 10) {
                   return (
                     <>
-                      <span className="num">{typeof ahead === 'number' ? ahead : '—'}</span>
+                      <LiveNumber className="num" value={typeof ahead === 'number' ? ahead : null} />
                       <span className="eta">{t('queue.startsInMin', { min: String(mins) })}</span>
                     </>
                   )
                 }
                 return (
                   <>
-                    <span className="num">{typeof ahead === 'number' ? ahead : '—'}</span>
+                    <LiveNumber className="num" value={typeof ahead === 'number' ? ahead : null} />
                     <span className="eta">
                       {typeof ahead === 'number' ? t('queue.aheadLabel') : ''}
                       {typeof waitMin === 'number' && waitMin > 0
-                        ? ` · ${t('queue.etaMin', { min: String(waitMin) })}`
+                        ? (
+                           <span style={{ display: 'inline-flex', gap: '4px', alignItems: 'center' }}>
+                             {' · '}{t('queue.etaMin', { min: '' }).trim()} <LiveNumber value={waitMin} />
+                           </span>
+                          )
                         : ''}
                     </span>
                   </>
@@ -271,23 +233,21 @@ export default function QueueLive() {
       {/* ---------- COUNTERS ONLY — no list of people ---------- */}
       <div className="qcount-grid">
         <section className="qcount-card">
-          <span className="qcount-card__num">{waiting}</span>
+          <LiveNumber className="qcount-card__num" value={waiting} />
           <span className="qcount-card__label">{t('queue.peopleWaiting')}</span>
         </section>
         <section className="qcount-card qcount-card--serving">
-          <span className="qcount-card__num">{serving}</span>
+          <LiveNumber className="qcount-card__num" value={serving} />
           <span className="qcount-card__label">{t('queue.beingServed')}</span>
         </section>
         <section className="qcount-card">
-          <span className="qcount-card__num">
-            {typeof avgMin === 'number' && avgMin > 0 ? avgMin : '—'}
-          </span>
+          <LiveNumber className="qcount-card__num" value={typeof avgMin === 'number' && avgMin > 0 ? avgMin : null} />
           <span className="qcount-card__label">{t('queue.avgService')}</span>
         </section>
         {typeof ahead === 'number' && myStatus !== 'serving' && (
           <section className="qcount-card qcount-card--mine">
-            <span className="qcount-card__num">{ahead}</span>
-            <span className="qcount-card__label">{t('queue.aheadOnly', { count: String(ahead) })}</span>
+            <LiveNumber className="qcount-card__num" value={ahead} />
+            <span className="qcount-card__label">{t('queue.aheadOnly', { count: String(ahead) }).replace(String(ahead), '').trim()}</span>
           </section>
         )}
       </div>

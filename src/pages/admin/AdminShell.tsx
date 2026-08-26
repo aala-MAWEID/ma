@@ -6,8 +6,8 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useLocale } from '@/contexts/LocaleContext'
 import { useTenantBundle } from '@/contexts/TenantContext'
 import { useToast } from '@/contexts/ToastContext'
-import { useIsDesktop } from '@/hooks'
-import { Button, Spinner } from '@/components/ui'
+import { useIsDesktop, useLivePulse } from '@/hooks'
+import { Button, Spinner, LiveNumber } from '@/components/ui'
 import { 
   CalendarIcon, 
   RefreshIcon, 
@@ -49,6 +49,8 @@ export default function AdminShell() {
       return next
     })
   }
+
+  const { snap: pulse } = useLivePulse(bundle?.tenant?.id, () => data.adminPulse(bundle.tenant.id!))
 
   // Load counts & sync
   const refreshCounts = () => {
@@ -189,8 +191,8 @@ export default function AdminShell() {
       dir={dir}
     >
       <AdminNav
-        pendingCount={pendingCount}
-        queueCount={queueCount}
+        pendingCount={pulse?.pending ?? pendingCount}
+        queueCount={pulse?.waiting ?? queueCount}
         isCollapsed={isCollapsed}
         onToggleCollapse={toggleCollapsed}
       />

@@ -12,6 +12,7 @@ export { useDragBooking } from '@/hooks/useDragBooking'
 export { useTurnStatus } from '@/hooks/useTurnStatus'
 export { useDevice, ensureHello, deviceTokenOf, claimCode } from '@/hooks/useDevice'
 export { useGuestFeed } from '@/hooks/useGuestFeed'
+export { useLivePulse, type LivePulse } from '@/hooks/useLivePulse'
 
 /** Re-render on an interval. Used by the hold countdown and the now-line. */
 export function useTick(ms: number, enabled = true): number {

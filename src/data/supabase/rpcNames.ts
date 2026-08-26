@@ -215,6 +215,7 @@ export const RPC_DEFINITIONS: readonly RpcSignature[] = Object.freeze([
   { name: 'admin_block_customer', args: ['p_tenant_id', 'p_customer_id', 'p_blocked', 'p_reason'] },
   { name: 'admin_notify_customer', args: ['p_tenant_id', 'p_booking_id', 'p_title', 'p_body', 'p_urgent'] },
   { name: 'admin_devices', args: ['p_tenant_id', 'p_limit'] },
+  { name: 'admin_pulse', args: ['p_tenant_id'] },
   { name: 'api_manifest', args: [] },
   { name: 'get_settings_schema', args: [] },
 

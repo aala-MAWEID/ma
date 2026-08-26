@@ -1,11 +1,15 @@
 import { useEffect, useState } from 'react'
 import { PageHeader } from '@/components/shared/PageHeader'
-import { Button, Field, Input, Modal, Select, Spinner } from '@/components/ui'
+import { Button, Field, Input, Modal, Select, Spinner, LiveNumber } from '@/components/ui'
+import { RowMenu } from '@/components/admin/RowMenu'
+import type { RowMenuItem } from '@/components/admin/RowMenu'
+import { ArrowDownIcon, ArrowUpIcon, ChairIcon, HashIcon, PhoneIcon, WhatsAppIcon, CloseIcon } from '@/components/ui/icons'
 import { data } from '@/data'
 import { useLocale } from '@/contexts/LocaleContext'
 import { useTenantBundle } from '@/contexts/TenantContext'
 import { useToast } from '@/contexts/ToastContext'
 import { usePermissions } from '@/hooks/usePermissions'
+import { useLivePulse } from '@/hooks'
 import { useShopSwitch, useQueueBoard } from '@/hooks/useQueueCore'
 import { formatMoney } from '@/lib/money'
 import { waLink, telLink } from '@/lib/url'
@@ -45,6 +49,8 @@ export default function QueueBoard() {
     moveBy,
     place,
   } = useQueueBoard(tenantId)
+
+  const { snap: pulse } = useLivePulse(tenantId, () => data.adminPulse(tenantId))
 
   // Sync initial shop status from board or bundle
   useEffect(() => {
@@ -170,7 +176,12 @@ export default function QueueBoard() {
     <section className="admin-page admin-queue-board" id="admin-queue-page">
       <PageHeader
         title={t('admin.queue')}
-        description={t('queue.boardSubtitle', { count: waitingList.length })}
+        description={
+          <>
+            <LiveNumber value={pulse?.waiting ?? waitingList.length} />{' '}
+            {t('queue.boardSubtitle', { count: '' }).trim()}
+          </>
+        }
         actions={
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
             <Button
@@ -309,15 +320,18 @@ export default function QueueBoard() {
                   >
                     ✓ {t('admin.finish')}
                   </Button>
-                  <Button
-                    id={`btn-noshow-${srv.id}`}
-                    size="sm"
-                    variant="outline"
-                    loading={acting === srv.id}
-                    onClick={() => handleFinish(srv.id, 'no_show')}
-                  >
-                    {t('admin.noShow')}
-                  </Button>
+                  <RowMenu
+                    label={t('queue.more')}
+                    items={[
+                      {
+                        key: 'noshow',
+                        label: t('admin.noShow'),
+                        danger: true,
+                        icon: <CloseIcon size={17} />,
+                        onSelect: () => handleFinish(srv.id, 'no_show')
+                      }
+                    ]}
+                  />
                 </div>
               </div>
             ))}
@@ -329,7 +343,7 @@ export default function QueueBoard() {
       <div className="queue-board-waiting" id="queue-waiting-section">
         <div className="waiting-head">
           <h2>
-            {t('admin.waitingList')} ({waitingList.length})
+            {t('admin.waitingList')} (<LiveNumber value={pulse?.waiting ?? waitingList.length} />)
           </h2>
         </div>
 
@@ -363,23 +377,6 @@ export default function QueueBoard() {
                   </div>
                 </div>
 
-                {w.customerPhone && (
-                  <div className="contact-block">
-                    <a href={telLink(w.customerPhone)} className="btn-icon" title={w.customerPhone}>
-                      📞
-                    </a>
-                    <a
-                      href={waLink(w.customerPhone)}
-                      target="_blank"
-                      rel="noreferrer noopener"
-                      className="btn-icon"
-                      title="WhatsApp"
-                    >
-                      💬
-                    </a>
-                  </div>
-                )}
-
                 {perms.reorder_queue && (
                   <div className="action-buttons">
                     <Button
@@ -389,37 +386,55 @@ export default function QueueBoard() {
                       loading={acting === w.id}
                       onClick={() => handleServe(w.id)}
                     >
-                      {t('admin.serveNow')}
+                      <ChairIcon size={16} />
+                      <span>{t('admin.serveNow')}</span>
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      title={t('queue.advance')}
-                      disabled={idx === 0 || acting === w.id}
-                      onClick={() => handleMove(w.id, -1)}
-                    >
-                      ↑
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      title={t('queue.skip')}
-                      disabled={idx === waitingList.length - 1 || acting === w.id}
-                      onClick={() => handleMove(w.id, 1)}
-                    >
-                      ↓
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="quiet"
-                      title={t('admin.moveTo')}
-                      onClick={() => {
-                        setMovingTicketId(w.id)
-                        setCustomPos(w.pos)
-                      }}
-                    >
-                      #
-                    </Button>
+
+                    <RowMenu
+                      label={t('queue.more')}
+                      items={[
+                        {
+                          key: 'up',
+                          label: t('queue.advance'),
+                          icon: <ArrowUpIcon size={17} />,
+                          disabled: idx === 0 || acting === w.id,
+                          onSelect: () => handleMove(w.id, -1),
+                        },
+                        {
+                          key: 'down',
+                          label: t('queue.skip'),
+                          icon: <ArrowDownIcon size={17} />,
+                          disabled: idx === waitingList.length - 1 || acting === w.id,
+                          onSelect: () => handleMove(w.id, 1),
+                        },
+                        {
+                          key: 'move',
+                          label: t('admin.moveTo'),
+                          icon: <HashIcon size={17} />,
+                          onSelect: () => {
+                            setMovingTicketId(w.id)
+                            setCustomPos(w.pos)
+                          },
+                        },
+                        ...(w.customerPhone
+                          ? [
+                              {
+                                key: 'call',
+                                label: t('queue.call'),
+                                icon: <PhoneIcon size={17} />,
+                                href: telLink(w.customerPhone),
+                              },
+                              {
+                                key: 'wa',
+                                label: t('queue.whatsapp'),
+                                icon: <WhatsAppIcon size={17} />,
+                                href: waLink(w.customerPhone),
+                                external: true,
+                              },
+                            ]
+                          : []),
+                      ] as RowMenuItem[]}
+                    />
                   </div>
                 )}
               </div>

@@ -105,6 +105,13 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  // The identity of this object must NEVER change: consumers put it in
+  // useCallback/useEffect dependency arrays. Including `toasts` here used to
+  // re-create it on every toast, which turned a single failed request into an
+  // infinite request/toast loop (V19-5 A0).
+  const toastsRef = useRef(toasts)
+  toastsRef.current = toasts
+
   const api = useMemo<ToastApi>(() => {
     const fn = ((message: string, tone?: ToastToneInput, ms?: number) =>
       push(message, tone, ms)) as ToastApi
@@ -116,9 +123,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     fn.warn = (message, ms) => push(message, 'warn', ms)
     fn.dismiss = dismiss
     fn.clear = clear
-    fn.toasts = toasts
+    Object.defineProperty(fn, 'toasts', {
+      get: () => toastsRef.current,
+      configurable: true,
+    })
     return fn
-  }, [push, dismiss, clear, toasts])
+  }, [push, dismiss, clear])
 
   return (
     <ToastContext.Provider value={api}>

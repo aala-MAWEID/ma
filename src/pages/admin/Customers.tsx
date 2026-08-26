@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Button, EmptyState, Field, Input, Modal, Spinner, Textarea } from '@/components/ui'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Button, EmptyState, Field, Input, Modal, Spinner, Textarea, LiveNumber } from '@/components/ui'
 import { data } from '@/data'
 import { useLocale } from '@/contexts/LocaleContext'
 import { useTenantBundle } from '@/contexts/TenantContext'
 import { useToast } from '@/contexts/ToastContext'
+import { useLivePulse } from '@/hooks'
 import { formatDateOnly, formatDateTime, formatRelative } from '@/lib/time'
 import { formatMoney } from '@/lib/money'
 import { telLink, waLink } from '@/lib/url'
@@ -28,6 +29,7 @@ export default function Customers() {
   const [term, setTerm] = useState('')
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState<AdminCustomerStats | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   const [detail, setDetail] = useState<AdminCustomerDetail | null>(null)
   const [detailBusy, setDetailBusy] = useState(false)
@@ -35,6 +37,8 @@ export default function Customers() {
   const [notifyTitle, setNotifyTitle] = useState('')
   const [notifyBody, setNotifyBody] = useState('')
   const [notifyBusy, setNotifyBusy] = useState(false)
+
+  const { snap: pulse } = useLivePulse(tenantId, () => data.adminPulse(tenantId))
 
   // debounce the search box (server-side search)
   useEffect(() => {
@@ -45,7 +49,16 @@ export default function Customers() {
     return () => window.clearTimeout(id)
   }, [search])
 
+  // t() and toast() are intentionally NOT dependencies: their identity can
+  // change on every render, and load() is used as an effect dependency.
+  const tRef = useRef(t)
+  tRef.current = t
+  const toastRef = useRef(toast)
+  toastRef.current = toast
+  const failedRef = useRef<string | null>(null)
+
   const load = useCallback(async () => {
+    const attempt = `${tenantId}|${term}|${offset}`
     setLoading(true)
     try {
       const page = await data.adminCustomers(tenantId, {
@@ -56,13 +69,29 @@ export default function Customers() {
       setRows(page.rows ?? [])
       setTotal(page.total ?? 0)
       setOrphans(page.orphanBookings ?? 0)
+      setLoadError(null)
+      failedRef.current = null
     } catch (err) {
-      console.error(err)
-      toast(t('error.unknown'), 'err')
+      console.error('[maweid] adminCustomers', err)
+      const detail =
+        err && typeof err === 'object'
+          ? String(
+              (err as { code?: unknown }).code ??
+                (err as { message?: unknown }).message ??
+                err,
+            )
+          : String(err)
+      setLoadError(detail)
+      setRows([])
+      // one toast per distinct failing request, never once per render
+      if (failedRef.current !== attempt) {
+        failedRef.current = attempt
+        toastRef.current(tRef.current('error.unknown'), 'err')
+      }
     } finally {
       setLoading(false)
     }
-  }, [tenantId, term, offset, t, toast])
+  }, [tenantId, term, offset])
 
   useEffect(() => {
     void load()
@@ -150,11 +179,11 @@ export default function Customers() {
       { label: t('admin.kpiCustomers'), value: stats?.customers ?? 0 },
       { label: t('admin.kpiKnownDevices'), value: stats?.knownDevices ?? 0 },
       { label: t('admin.kpiRepeat'), value: stats?.repeatCustomers ?? 0 },
-      { label: t('admin.kpiWaiting'), value: stats?.queueWaiting ?? 0 },
-      { label: t('admin.kpiUnread'), value: stats?.unreadNotifications ?? 0 },
+      { label: t('admin.kpiWaiting'), value: pulse?.waiting ?? stats?.queueWaiting ?? 0 },
+      { label: t('admin.kpiUnread'), value: pulse?.unread ?? stats?.unreadNotifications ?? 0 },
       { label: t('admin.kpiBlocked'), value: stats?.blocked ?? 0 },
     ],
-    [stats, t],
+    [stats, pulse, t],
   )
 
   const from = total === 0 ? 0 : offset + 1
@@ -183,7 +212,7 @@ export default function Customers() {
       <section className="cust-kpis">
         {kpis.map((k) => (
           <div key={k.label} className="cust-kpi">
-            <span className="cust-kpi__num">{k.value}</span>
+            <LiveNumber className="cust-kpi__num" value={k.value} />
             <span className="cust-kpi__label">{k.label}</span>
           </div>
         ))}
@@ -191,6 +220,16 @@ export default function Customers() {
 
       {orphans > 0 && (
         <p className="cust-note">{t('admin.orphanBookings', { count: String(orphans) })}</p>
+      )}
+
+      {loadError && !loading && (
+        <div className="alert alert--err" role="alert">
+          <div>{t('error.unknown')}</div>
+          <div className="alert__detail" dir="ltr">{loadError}</div>
+          <Button type="button" size="sm" variant="outline" onClick={() => void load()}>
+            {t('common.refresh')}
+          </Button>
+        </div>
       )}
 
       {loading && rows.length === 0 ? (

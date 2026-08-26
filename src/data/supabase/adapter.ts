@@ -9,6 +9,7 @@ import type {
 import {
   NO_PERMS,
   type AdminBookingInput,
+  type AdminPulse,
   type AvailabilityQuery,
   type ConfirmInput,
   type DataAdapter,
@@ -48,16 +49,21 @@ import type {
 } from '../domain'
 
 /* ------------------------------------------------------------------ *
- *  Realtime: one channel per tenant, shared by every subscriber.
+ *  Realtime pulse: one hub per tenant, two transports, shared by all
+ *  subscribers.
  *
- *  supabase.channel(topic) returns the EXISTING channel when the topic is
- *  already registered, and .on('postgres_changes', ...) throws once that
- *  channel has subscribed. Two screens sharing a topic therefore crashed
- *  the route. We register the topic exactly once and fan out locally.
+ *  - postgres_changes reaches signed-in members only (RLS applies).
+ *  - broadcast on `maweid:tenant:<id>` reaches anonymous guests too; the
+ *    DB trigger sends a revision stamp with no customer data in it.
+ *
+ *  Every `.on(...)` is registered BEFORE `.subscribe()`, because
+ *  supabase-js throws "cannot add postgres_changes callbacks after
+ *  subscribe()" otherwise. Listeners are fanned out locally instead.
  * ------------------------------------------------------------------ */
 type BookingsHub = {
-  channel: ReturnType<typeof supabase.channel>
+  channels: Array<ReturnType<typeof supabase.channel>>
   listeners: Set<() => void>
+  live: boolean
 }
 const bookingHubs = new Map<string, BookingsHub>()
 
@@ -66,28 +72,52 @@ function bookingsHub(tenantId: string): BookingsHub {
   if (existing) return existing
 
   const listeners = new Set<() => void>()
-  const channel = supabase.channel(`bookings:${tenantId}:${Date.now().toString(36)}`)
+  const hub: BookingsHub = { channels: [], listeners, live: false }
 
-  channel.on(
+  const fire = () => {
+    for (const fn of Array.from(listeners)) {
+      try {
+        fn()
+      } catch (e) {
+        console.error('[maweid] realtime listener فشل', e)
+      }
+    }
+  }
+
+  // 1) row changes — dashboard
+  const dbChannel = supabase.channel(`bookings:${tenantId}:${Date.now().toString(36)}`)
+  dbChannel.on(
     'postgres_changes',
     { event: '*', schema: 'public', table: 'bookings', filter: `tenant_id=eq.${tenantId}` },
-    () => {
-      for (const fn of Array.from(listeners)) {
-        try {
-          fn()
-        } catch (e) {
-          console.error('[maweid] realtime listener فشل', e)
-        }
-      }
-    },
+    fire,
   )
-  channel.subscribe((status) => {
-    if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-      console.warn('[maweid] realtime bookings', status, '— التحديث اللحظي معطّل، والشاشة تعمل')
+  dbChannel.on(
+    'postgres_changes',
+    { event: '*', schema: 'public', table: 'shop_state', filter: `tenant_id=eq.${tenantId}` },
+    fire,
+  )
+  dbChannel.subscribe((status) => {
+    if (status === 'SUBSCRIBED') hub.live = true
+    if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+      hub.live = false
+      console.warn('[maweid] realtime bookings', status, '— النبض معطّل، والشاشة تعمل')
     }
   })
 
-  const hub: BookingsHub = { channel, listeners }
+  // 2) broadcast — guests. The topic must match the DB trigger exactly.
+  const bcTopic = `maweid:tenant:${tenantId}`
+  for (const ch of supabase.getChannels()) {
+    if (ch.topic === bcTopic || ch.topic === `realtime:${bcTopic}`) {
+      void supabase.removeChannel(ch)
+    }
+  }
+  const bcChannel = supabase.channel(bcTopic)
+  bcChannel.on('broadcast', { event: 'pulse' }, fire)
+  bcChannel.subscribe((status) => {
+    if (status === 'SUBSCRIBED') hub.live = true
+  })
+
+  hub.channels = [dbChannel, bcChannel]
   bookingHubs.set(tenantId, hub)
   return hub
 }
@@ -632,24 +662,32 @@ export const supabaseAdapter: DataAdapter = {
   },
 
   subscribeBookings(tenantId: string, onChange: () => void) {
+    return this.subscribePulse(tenantId, onChange)
+  },
+
+  subscribePulse(tenantId: string, onPing: () => void) {
     let hub: BookingsHub
     try {
       hub = bookingsHub(tenantId)
     } catch (e) {
       // Realtime is an enhancement, never a requirement: a failure here must
-      // not blank a screen. The caller keeps its manual reload path.
-      console.error('[maweid] تعذر الاشتراك اللحظي', e)
+      // not blank a screen. The caller keeps its polling path.
+      console.error('[maweid] تعذر الاشتراك اللحضي', e)
       return () => {}
     }
 
-    hub.listeners.add(onChange)
+    hub.listeners.add(onPing)
     return () => {
-      hub.listeners.delete(onChange)
+      hub.listeners.delete(onPing)
       if (hub.listeners.size === 0) {
         bookingHubs.delete(tenantId)
-        void supabase.removeChannel(hub.channel)
+        for (const ch of hub.channels) void supabase.removeChannel(ch)
       }
     }
+  },
+
+  async adminPulse(tenantId: string) {
+    return rpc<AdminPulse>('admin_pulse', { p_tenant_id: tenantId })
   },
 
   // ---- الطابور ------------------------------------------------------------
