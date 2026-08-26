@@ -20,7 +20,15 @@ jobs:
 
       - name: No committed Supabase secrets (blocking)
         run: |
-          ! grep -rEn "sb_(publishable|secret)_[A-Za-z0-9_-]{10,}|eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9" src/ .env.example
+          set -u
+          hits="$(grep -rEn 'sb_(publishable|secret)_[A-Za-z0-9_-]{10,}|eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9' src/ .env.example || true)"
+          real="$(printf '%s\n' "$hits" | grep -vE 'X{8,}|YOUR|your-project|placeholder|PLACEHOLDER|<|>' | sed '/^$/d' || true)"
+          if [ -n "$real" ]; then
+            echo "::error::A real Supabase key looks committed:"
+            printf '%s\n' "$real"
+            exit 1
+          fi
+          echo "OK - no committed Supabase keys."
 
       - name: Typecheck (blocking)
         run: npm run typecheck
