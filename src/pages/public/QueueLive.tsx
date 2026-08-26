@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Button, Field, Input, Select, Spinner, Modal } from '@/components/ui'
 import { data } from '@/data'
 import { useLocale } from '@/contexts/LocaleContext'
@@ -11,6 +12,13 @@ import { localDeviceToken } from '@/lib/device'
 import { claimCode, useDevice } from '@/hooks/useDevice'
 import { useGuestFeed } from '@/hooks/useGuestFeed'
 import type { QueueCounts } from '@/data/guest'
+
+const minutesUntil = (iso?: string | null): number | null => {
+  if (!iso) return null
+  const ms = new Date(iso).getTime()
+  if (Number.isNaN(ms)) return null // guard: Invalid time value
+  return Math.round((ms - Date.now()) / 60000)
+}
 
 /**
  * PUBLIC QUEUE — privacy-first.
@@ -29,6 +37,10 @@ export default function QueueLive() {
   const slug = bundle.tenant.slug
   const { token } = useDevice(slug)
   const guest = useGuestFeed(slug, token, Boolean(token))
+
+  const [params] = useSearchParams()
+  const focusCode = params.get('code')
+  const ticketRef = useRef<HTMLDivElement | null>(null)
 
   const [counts, setCounts] = useState<QueueCounts | null>(null)
   const [loading, setLoading] = useState(true)
@@ -84,6 +96,13 @@ export default function QueueLive() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bundle.tenant.id, loadCounts])
+
+  useEffect(() => {
+    const myCode = counts?.myCode
+    if (focusCode && myCode && focusCode === myCode && ticketRef.current) {
+      ticketRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
+  }, [focusCode, counts?.myCode])
 
   useEffect(() => {
     reload()
@@ -198,7 +217,10 @@ export default function QueueLive() {
 
       {/* ---------- MY OWN TICKET (only my data) ---------- */}
       {myCode && (
-        <div className={`queue-my-ticket ${myStatus === 'serving' ? 'is-serving' : ''}`}>
+        <div
+          ref={ticketRef}
+          className={`queue-my-ticket ${myStatus === 'serving' ? 'is-serving' : ''} ${focusCode && focusCode === myCode ? 'nc-focus' : ''}`}
+        >
           <div className="queue-my-ticket__badge">
             {myStatus === 'serving' ? t('status.serving') : t('queue.myTicket')}
           </div>
@@ -219,17 +241,28 @@ export default function QueueLive() {
                   <span className="num">✓</span>
                   <span className="eta">{t('queue.inChair')}</span>
                 </>
-              ) : (
-                <>
-                  <span className="num">{typeof ahead === 'number' ? ahead : '—'}</span>
-                  <span className="eta">
-                    {typeof ahead === 'number' ? t('queue.aheadLabel') : ''}
-                    {typeof waitMin === 'number' && waitMin > 0
-                      ? ` · ${t('queue.etaMin', { min: String(waitMin) })}`
-                      : ''}
-                  </span>
-                </>
-              )}
+              ) : (() => {
+                const mins = minutesUntil(myTicket?.startsAt)
+                if (mins !== null && mins > 10) {
+                  return (
+                    <>
+                      <span className="num">{typeof ahead === 'number' ? ahead : '—'}</span>
+                      <span className="eta">{t('queue.startsInMin', { min: String(mins) })}</span>
+                    </>
+                  )
+                }
+                return (
+                  <>
+                    <span className="num">{typeof ahead === 'number' ? ahead : '—'}</span>
+                    <span className="eta">
+                      {typeof ahead === 'number' ? t('queue.aheadLabel') : ''}
+                      {typeof waitMin === 'number' && waitMin > 0
+                        ? ` · ${t('queue.etaMin', { min: String(waitMin) })}`
+                        : ''}
+                    </span>
+                  </>
+                )
+              })()}
             </div>
           </div>
         </div>

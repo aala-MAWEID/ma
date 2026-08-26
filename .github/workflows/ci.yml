@@ -1,14 +1,14 @@
 name: ci
 
 on:
+  push:
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
 jobs:
   checks:
     runs-on: ubuntu-24.04
-    # لا يوقف أي شيء: النتيجة للعلم فقط
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 
@@ -18,25 +18,30 @@ jobs:
 
       - run: npm install --no-audit --no-fund
 
-      - name: No committed Supabase secrets
+      - name: No committed Supabase secrets (blocking)
         run: |
           ! grep -rEn "sb_(publishable|secret)_[A-Za-z0-9_-]{10,}|eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9" src/ .env.example
 
-      - name: CSS syntax audit (blocking)
+      - name: Typecheck (blocking)
+        run: npm run typecheck
+
+      - name: RPC parity (blocking)
+        run: npm run rpc:audit
+
+      - name: i18n coverage (blocking)
+        run: npm run i18n:audit
+
+      - name: Error codes (blocking)
+        run: npm run error:audit
+
+      - name: CSS syntax (blocking)
         run: npm run audit:css
 
-      - name: RTL audit (non blocking)
+      - name: CSS class coverage (report only)
+        run: node scripts/css-class-audit.mjs || true
+
+      - name: RTL logical properties (report only)
         run: npm run audit:rtl || true
 
-      - name: Typecheck (non blocking)
-        run: npm run typecheck || true
-
-      - name: Tests (non blocking)
+      - name: Tests (report only)
         run: npx vitest run --passWithNoTests || true
-
-      - name: Build check
-        run: npm run build:pages || true
-        env:
-          VITE_BASE_PATH: /ma/
-          VITE_DATA_BACKEND: mock
-          VITE_DEFAULT_TENANT: zaytouna

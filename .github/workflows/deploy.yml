@@ -35,6 +35,7 @@ jobs:
         env:
           # مهم جداً: اسم المستودع بين شرطتين مائلتين
           VITE_BASE_PATH: /ma/
+          VITE_SITE_ORIGIN: https://aala-maweid.github.io
           VITE_DATA_BACKEND: ${{ vars.VITE_DATA_BACKEND || 'supabase' }}
           VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}

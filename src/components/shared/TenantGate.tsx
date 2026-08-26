@@ -8,6 +8,7 @@ import { useLocale } from '@/contexts/LocaleContext'
 import { copyText } from '@/lib/copyText'
 import { data, backend, backendDiagnostics } from '@/data'
 import { identifyDevice } from '@/lib/device'
+import { applyHead } from '@/lib/head'
 import {
   isSupabaseConfigured,
   supabaseNotices,
@@ -182,12 +183,23 @@ function Failure({ slug }: { slug: string }) {
 /** الموقع العام: الهيدر والفوتر يُرسمان هنا فقط، ولا تُعيدهما أي صفحة. */
 function PublicFrame({ slug }: { slug: string }) {
   const { bundle } = useTenant()
+  const { locale } = useLocale()
 
   useEffect(() => {
     if (slug) {
       void identifyDevice(data, slug).catch((e) => console.warn('[device] identify failed', e))
     }
   }, [slug])
+
+  useEffect(() => {
+    if (!bundle) return
+    const primary = (bundle.staff ?? [])
+      .filter((s) => s.isActive)
+      .slice()
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .find((s) => s.avatarUrl)
+    applyHead({ tenant: bundle.tenant, locale, photoUrl: primary?.avatarUrl ?? null })
+  }, [bundle, locale])
 
   if (!bundle) return <Failure slug={slug} />
   return (

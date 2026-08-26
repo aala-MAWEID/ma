@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useLocale } from '@/contexts/LocaleContext'
 import { useTenant } from '@/contexts/TenantContext'
 import { useToast } from '@/contexts/ToastContext'
@@ -10,7 +11,15 @@ import { installAudioUnlock, osPermission, requestOsNotifications, unlockAudio }
 import { formatRelative, formatTime } from '@/lib/time'
 import { Button, Input } from '@/components/ui'
 
+const minutesUntil = (iso?: string | null): number | null => {
+  if (!iso) return null
+  const ms = new Date(iso).getTime()
+  if (Number.isNaN(ms)) return null // guard: Invalid time value
+  return Math.round((ms - Date.now()) / 60000)
+}
+
 export function NotificationCenter() {
+  const navigate = useNavigate()
   const { t, locale } = useLocale()
   // useTenant().tenant THROWS while the bundle is loading, so read through bundle.
   const { bundle } = useTenant()
@@ -25,6 +34,31 @@ export function NotificationCenter() {
   const [code, setCode] = useState('')
   const [busy, setBusy] = useState(false)
   const [perm, setPerm] = useState<string>(() => osPermission())
+  const [counts, setCounts] = useState<{ waiting: number; serving: number; myTicketNo: number | null } | null>(null)
+
+  const goToQueue = (code?: string) => {
+    setOpen(false)
+    navigate(`/${slug}/queue${code ? `?code=${encodeURIComponent(code)}` : ''}`)
+  }
+
+  useEffect(() => {
+    if (!open || !slug) return
+    let alive = true
+    const tick = async () => {
+      try {
+        const c = await data.queueCounts(slug, token)
+        if (alive) setCounts({ waiting: c.waiting ?? 0, serving: c.serving ?? 0, myTicketNo: c.myTicketNo ?? null })
+      } catch {
+        /* panel must never crash on a counter read */
+      }
+    }
+    void tick()
+    const id = window.setInterval(tick, 15_000)
+    return () => {
+      alive = false
+      window.clearInterval(id)
+    }
+  }, [open, slug, token])
 
   useEffect(() => {
     installAudioUnlock()
@@ -174,6 +208,16 @@ export function NotificationCenter() {
               </button>
             </header>
 
+            {counts && (
+              <button type="button" className="nc-counts" onClick={() => goToQueue()}>
+                <span className="nc-counts__main">{t('queue.waitingNow', { count: String(counts.waiting) })}</span>
+                {counts.myTicketNo !== null && (
+                  <span className="nc-counts__mine">{t('queue.myPosition', { pos: String(counts.myTicketNo) })}</span>
+                )}
+                <span className="nc-counts__cta">{t('queue.openLive')}</span>
+              </button>
+            )}
+
             {/* my active tickets — my own data only */}
             <div className="nc-tickets">
               {feed.tickets.length === 0 ? (
@@ -196,14 +240,24 @@ export function NotificationCenter() {
                         .filter(Boolean)
                         .join(' · ')}
                     </p>
-                    {ticket.turn && typeof ticket.turn.ahead === 'number' && (
-                      <p className="nc-ticket__turn">
-                        {t('queue.aheadOnly', { count: String(ticket.turn.ahead) })}
-                        {typeof ticket.turn.waitMin === 'number' && ticket.turn.waitMin > 0
-                          ? ` · ${t('queue.etaMin', { min: String(ticket.turn.waitMin) })}`
-                          : ''}
-                      </p>
-                    )}
+                    {(() => {
+                      const mins = minutesUntil(ticket.startsAt)
+                      if (ticket.status !== 'serving' && mins !== null && mins > 10) {
+                        // later today -> show the reserved time, not the queue ETA
+                        return <p className="nc-ticket__turn">{t('queue.startsInMin', { min: String(mins) })}</p>
+                      }
+                      if (ticket.turn && typeof ticket.turn.ahead === 'number') {
+                        return (
+                          <p className="nc-ticket__turn">
+                            {t('queue.aheadOnly', { count: String(ticket.turn.ahead) })}
+                            {typeof ticket.turn.waitMin === 'number' && ticket.turn.waitMin > 0
+                              ? ` · ${t('queue.etaMin', { min: String(ticket.turn.waitMin) })}`
+                              : ''}
+                          </p>
+                        )
+                      }
+                      return null
+                    })()}
                   </article>
                 ))
               )}
@@ -234,16 +288,24 @@ export function NotificationCenter() {
                 <p className="nc-muted">{t('notify.empty')}</p>
               ) : (
                 feed.notifications.map((n) => (
-                  <article
+                  <button
                     key={n.id}
-                    className={`nc-item ${n.readAt ? '' : 'nc-item--unread'} ${n.urgent ? 'nc-item--urgent' : ''}`}
+                    type="button"
+                    className={`nc-note nc-note--link${n.readAt ? '' : ' nc-note--unread'}`}
+                    onClick={() => {
+                      if (!n.readAt) void feed.markRead([n.id])
+                      const targetCode = n.code ?? (typeof n.payload?.code === 'string' ? n.payload.code : undefined)
+                      goToQueue(targetCode)
+                    }}
+                    aria-label={`${n.title} — ${t('queue.openLive')}`}
                   >
-                    <div className="nc-item__row">
-                      <strong>{n.title}</strong>
-                      <time>{formatRelative(n.createdAt, locale)}</time>
-                    </div>
-                    {n.body && <p>{n.body}</p>}
-                  </article>
+                    <span className="nc-note__body">
+                      <span className="nc-note__title">{n.title}</span>
+                      {n.body && <span className="nc-note__text">{n.body}</span>}
+                      <span className="nc-note__time">{formatRelative(n.createdAt, locale)}</span>
+                    </span>
+                    <span className="nc-note__chev" aria-hidden="true">‹</span>
+                  </button>
                 ))
               )}
             </div>

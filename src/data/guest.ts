@@ -5,6 +5,7 @@ export type GuestNotification = {
   body: string | null
   urgent: boolean
   sound: boolean
+  code?: string | null
   payload: Record<string, unknown> | null
   bookingId: string | null
   createdAt: string | null
