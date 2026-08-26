@@ -1,4 +1,8 @@
 import type {
+  GuestHello, GuestClaim, GuestFeed, GuestPrefs, QueueCounts,
+  AdminCustomersPage, AdminCustomerDetail, AdminCustomerStats, AdminDeviceRow,
+} from './guest'
+import type {
   AgendaItem,
   Booking,
   BookingSource,
@@ -25,6 +29,7 @@ import type {
 } from './domain'
 
 export * from './domain'
+export * from './guest'
 export type {
   AgendaItem,
   Booking,
@@ -323,6 +328,49 @@ export interface DataAdapter {
   queuePublic(slug: string, day?: string | null): Promise<PublicQueue>
   /** حالة دور صاحب الرمز */
   turnStatus(code: string): Promise<TurnStatus>
+
+  // ---- V17 guest identity (anonymous, no account) ----
+  /** Register/refresh this device. Returns the authoritative token. */
+  guestHello(
+    slug: string,
+    deviceToken: string,
+    profile?: { userAgent?: string | null; platform?: string | null; locale?: string | null; timeZone?: string | null },
+  ): Promise<GuestHello>
+  /** Link an existing booking code to this device. */
+  guestClaim(slug: string, deviceToken: string, code: string): Promise<GuestClaim>
+  /** Notifications + my own tickets. */
+  guestFeed(slug: string, deviceToken: string, limit?: number): Promise<GuestFeed>
+  guestMarkRead(deviceToken: string, ids?: string[] | null): Promise<{ marked: number }>
+  guestSetPrefs(
+    slug: string,
+    deviceToken: string,
+    prefs: { sound?: boolean | null; push?: boolean | null; label?: string | null },
+  ): Promise<GuestPrefs>
+  /** Public queue counters. NUMBERS ONLY — no other customer is exposed. */
+  queueCounts(slug: string, deviceToken?: string | null): Promise<QueueCounts>
+
+  // ---- V17 dashboard customer registry ----
+  adminCustomers(
+    tenantId: string,
+    opts?: { search?: string | null; limit?: number; offset?: number },
+  ): Promise<AdminCustomersPage>
+  adminCustomerDetail(tenantId: string, customerId: string): Promise<AdminCustomerDetail>
+  adminCustomerStats(tenantId: string): Promise<AdminCustomerStats>
+  adminBlockCustomer(
+    tenantId: string,
+    customerId: string,
+    blocked: boolean,
+    reason?: string | null,
+  ): Promise<{ isBlocked: boolean; blockedReason: string | null }>
+  adminNotifyCustomer(
+    tenantId: string,
+    bookingId: string,
+    title: string,
+    body?: string | null,
+    urgent?: boolean,
+  ): Promise<{ notificationId: string | null; reachable: boolean }>
+  adminDevices(tenantId: string, limit?: number): Promise<{ devices: AdminDeviceRow[] }>
+
   /** إجازات وغياب الموظفين */
   listTimeOff(tenantId: string): Promise<TimeOffRow[]>
   upsertTimeOff(input: {

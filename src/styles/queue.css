@@ -160,3 +160,28 @@
 @media (max-width: 720px) {
   .team-row { grid-template-columns: 1fr; }
 }
+
+/* ---- V17 anonymous counters ------------------------------------------- */
+.qcount-grid {
+  display: grid; gap: 10px; margin-top: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+.qcount-card {
+  display: grid; gap: 4px; justify-items: center; text-align: center;
+  padding: 18px 12px; border-radius: 18px;
+  background: var(--mw-surface-2, #f9fafb);
+  border: 1px solid var(--mw-border, rgba(0,0,0,.08));
+}
+.qcount-card__num { font-size: 34px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+.qcount-card__label { font-size: 13px; opacity: .7; }
+.qcount-card--serving { background: rgba(14,124,134,.08); border-color: rgba(14,124,134,.25); }
+.qcount-card--mine { background: rgba(217,45,32,.06); border-color: rgba(217,45,32,.25); }
+.qcount-privacy { margin-top: 14px; font-size: 12px; opacity: .6; text-align: center; }
+.qcount-hint { margin-top: 4px; font-size: 12px; opacity: .5; text-align: center; }
+
+@media (min-width: 861px) {
+  .qcount-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-top: 20px; }
+  .qcount-card { padding: 26px 18px; border-radius: 22px; }
+  .qcount-card__num { font-size: 44px; }
+  .qcount-card__label { font-size: 14px; }
+}

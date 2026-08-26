@@ -32,6 +32,16 @@ for (const [name] of manifestFns.entries()) {
   }
 }
 
+// Reverse direction: anything the client calls must exist in the manifest.
+for (const match of rpcNamesContent.matchAll(/name:\s*['"]([a-z0-9_]+)['"]/g)) {
+  if (!manifestFns.has(match[1])) {
+    console.error(
+      `❌ RPC '${match[1]}' is called by the client but missing in supabase/api-manifest.json`,
+    )
+    errors++
+  }
+}
+
 if (errors > 0) {
   console.error(`\nFound ${errors} RPC parity issue(s).`)
   process.exit(1)

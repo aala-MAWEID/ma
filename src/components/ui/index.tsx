@@ -252,7 +252,17 @@ function Overlay({
   if (!open) return null
 
   return createPortal(
-    <div className="scrim" onMouseDown={onClose}>
+    <div
+      className="scrim"
+      onClick={(e) => {
+        // Close only on a real click on the backdrop itself. Using onMouseDown
+        // here used to close the dialog when the page regained focus after a
+        // native file/camera sheet, which cancelled in-flight uploads.
+        if (e.target !== e.currentTarget) return
+        if (document.body.dataset.mwLock === '1') return
+        onClose()
+      }}
+    >
       <div
         ref={ref}
         className={cn(variant, className)}
@@ -260,7 +270,7 @@ function Overlay({
         aria-modal="true"
         aria-labelledby={labelledBy}
         tabIndex={-1}
-        onMouseDown={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
       >
         {children}
       </div>

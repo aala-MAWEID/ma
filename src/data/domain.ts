@@ -191,7 +191,11 @@ export interface Customer {
   isBlocked: boolean
   noShowCount: number
   totalBookings: number
-  createdAt: Date
+  /** Absent when the RPC does not project it — always render through formatDateTime. */
+  createdAt?: Date
+  lastVisitAt?: Date
+  lastSeenAt?: Date
+  blockedReason?: string | null
 }
 
 export interface Booking {

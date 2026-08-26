@@ -1,6 +1,11 @@
 import { supabase, supabaseConfigProblem } from './client'
 import { fromPostgrest, AppError } from '../errors'
 import { toSquareJpeg } from '@/lib/image'
+import { toDate } from '@/lib/time'
+import type {
+  GuestHello, GuestClaim, GuestFeed, GuestPrefs, QueueCounts,
+  AdminCustomersPage, AdminCustomerDetail, AdminCustomerStats, AdminDeviceRow,
+} from '@/data/guest'
 import {
   NO_PERMS,
   type AdminBookingInput,
@@ -207,8 +212,8 @@ function toTicket(r: Record<string, any>): QueueTicket {
     customerPhone: r.customer_phone ?? null,
     code: r.code,
     skippedCount: r.skipped_count ?? 0,
-    createdAt: new Date(r.created_at),
-    servedAt: r.served_at ? new Date(r.served_at) : null,
+    createdAt: toDate(r.created_at) ?? new Date(),
+    servedAt: toDate(r.served_at),
     etaMinutes: r.eta_minutes ?? 0,
   }
 }
@@ -217,10 +222,15 @@ function toCustomer(r: Record<string, any>): Customer {
   const c = camelizeDeep<Record<string, any>>(r)
   return {
     ...c,
+    fullName: String(c.fullName ?? c.name ?? ''),
+    phone: String(c.phone ?? ''),
     isBlocked: c.isBlocked === true,
     noShowCount: Number(c.noShowCount ?? 0),
-    totalBookings: Number(c.totalBookings ?? 0),
-    lastVisitAt: c.lastVisitAt ? new Date(c.lastVisitAt) : undefined,
+    totalBookings: Number(c.totalBookings ?? c.bookingsCount ?? 0),
+    // Dates are real Dates or absent — never an unparseable string.
+    createdAt: toDate(c.createdAt) ?? undefined,
+    lastVisitAt: toDate(c.lastVisitAt) ?? undefined,
+    lastSeenAt: toDate(c.lastSeenAt) ?? undefined,
   } as unknown as Customer
 }
 
@@ -1010,6 +1020,105 @@ export const supabaseAdapter: DataAdapter = {
       void readSession().then(cb).catch(() => cb(null))
     })
     return () => sub.subscription.unsubscribe()
+  },
+
+  // ================= V17 guest identity =================
+  async guestHello(slug, deviceToken, profile) {
+    return rpc<GuestHello>('guest_hello', {
+      p_slug: slug,
+      p_device_token: deviceToken,
+      p_user_agent: profile?.userAgent ?? null,
+      p_platform: profile?.platform ?? null,
+      p_locale: profile?.locale ?? null,
+      p_time_zone: profile?.timeZone ?? null,
+    })
+  },
+
+  async guestClaim(slug, deviceToken, code) {
+    return rpc<GuestClaim>('guest_claim', {
+      p_slug: slug,
+      p_device_token: deviceToken,
+      p_code: code,
+    })
+  },
+
+  async guestFeed(slug, deviceToken, limit = 30) {
+    return rpc<GuestFeed>('guest_feed', {
+      p_slug: slug,
+      p_device_token: deviceToken,
+      p_limit: limit,
+    })
+  },
+
+  async guestMarkRead(deviceToken, ids = null) {
+    return rpc<{ marked: number }>('guest_mark_read', {
+      p_device_token: deviceToken,
+      p_ids: ids && ids.length > 0 ? ids : null,
+    })
+  },
+
+  async guestSetPrefs(slug, deviceToken, prefs) {
+    return rpc<GuestPrefs>('guest_set_prefs', {
+      p_slug: slug,
+      p_device_token: deviceToken,
+      p_sound: prefs.sound ?? null,
+      p_push: prefs.push ?? null,
+      p_label: prefs.label ?? null,
+    })
+  },
+
+  async queueCounts(slug, deviceToken = null) {
+    return rpc<QueueCounts>('queue_counts', {
+      p_slug: slug,
+      p_device_token: deviceToken,
+    })
+  },
+
+  // ================= V17 customer registry =================
+  async adminCustomers(tenantId, opts) {
+    return rpc<AdminCustomersPage>('admin_customers', {
+      p_tenant_id: tenantId,
+      p_search: opts?.search?.trim() ? opts.search.trim() : null,
+      p_limit: opts?.limit ?? 100,
+      p_offset: opts?.offset ?? 0,
+    })
+  },
+
+  async adminCustomerDetail(tenantId, customerId) {
+    return rpc<AdminCustomerDetail>('admin_customer_detail', {
+      p_tenant_id: tenantId,
+      p_customer_id: customerId,
+    })
+  },
+
+  async adminCustomerStats(tenantId) {
+    return rpc<AdminCustomerStats>('admin_customer_stats', { p_tenant_id: tenantId })
+  },
+
+  async adminBlockCustomer(tenantId, customerId, blocked, reason = null) {
+    return rpc<{ isBlocked: boolean; blockedReason: string | null }>('admin_block_customer', {
+      p_tenant_id: tenantId,
+      p_customer_id: customerId,
+      p_blocked: blocked,
+      p_reason: reason,
+    })
+  },
+
+  async adminNotifyCustomer(tenantId, bookingId, title, body = null, urgent = true) {
+    return rpc<{ notificationId: string | null; reachable: boolean }>('admin_notify_customer', {
+      p_tenant_id: tenantId,
+      p_booking_id: bookingId,
+      p_title: title,
+      p_body: body,
+      p_urgent: urgent,
+    })
+  },
+
+  async adminDevices(tenantId, limit = 200) {
+    return rpc<{ devices: AdminDeviceRow[] }>('admin_devices', {
+      p_tenant_id: tenantId,
+      p_limit: limit,
+    })
   },
 
   permissions(): Permissions {

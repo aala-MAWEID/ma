@@ -61,6 +61,7 @@ import { bookingCode, store, uid } from '@/data/mock/store'
 import { DEMO_OWNER } from '@/data/mock/seed'
 
 const LATENCY_MS = 180
+const mockDevices = new Map<string, number>()
 
 function delay<T>(value: T): Promise<T> {
   return new Promise((resolve) => setTimeout(() => resolve(value), LATENCY_MS))
@@ -1275,6 +1276,111 @@ export const mockAdapter: DataAdapter = {
       d.closedDates = d.closedDates.filter((c) => !(c.day === day && c.tenantId === tenantId))
     })
     return delay(undefined)
+  },
+
+  async guestHello(slug: string, deviceToken: string) {
+    await delay(null)
+    const visits = (mockDevices.get(deviceToken) ?? 0) + 1
+    mockDevices.set(deviceToken, visits)
+    return {
+      deviceToken, isNew: visits === 1, visits,
+      firstSeenAt: new Date().toISOString(), lastSeenAt: new Date().toISOString(),
+      soundEnabled: true, pushEnabled: false, label: null,
+      known: visits > 1, customer: null, unread: 0,
+      serverTime: new Date().toISOString(),
+    }
+  },
+
+  async guestClaim(_slug: string, _deviceToken: string, code: string) {
+    await delay(null)
+    return {
+      bookingId: 'mock-' + code, code, status: 'confirmed', mode: 'queue',
+      startsAt: new Date().toISOString(), customerId: null, linkedHistory: 0,
+      serverTime: new Date().toISOString(),
+    }
+  },
+
+  async guestFeed(_slug: string, deviceToken: string) {
+    await delay(null)
+    return {
+      deviceToken, known: true, visits: mockDevices.get(deviceToken) ?? 1,
+      soundEnabled: true, pushEnabled: false, unread: 0,
+      notifications: [], tickets: [], serverTime: new Date().toISOString(),
+    }
+  },
+
+  async guestMarkRead() {
+    await delay(null)
+    return { marked: 0 }
+  },
+
+  async guestSetPrefs(_slug: string, _deviceToken: string, prefs: { sound?: boolean | null; push?: boolean | null; label?: string | null }) {
+    await delay(null)
+    return { soundEnabled: prefs.sound !== false, pushEnabled: prefs.push === true, label: prefs.label ?? null }
+  },
+
+  async queueCounts(slug: string, _deviceToken?: string | null) {
+    await delay(null)
+    const q = await this.queuePublic(slug)
+    return {
+      found: true, enabled: true,
+      waiting: q.waiting ?? 0, serving: q.serving ?? 0, avgMin: q.avgMin ?? 20,
+      maxSize: null, ahead: null, waitMin: null,
+      myStatus: null, myCode: null, myTicketNo: null,
+      serverTime: new Date().toISOString(),
+    }
+  },
+
+  async adminCustomers(tenantId: string) {
+    await delay(null)
+    const rows = await this.listCustomers(tenantId)
+    return {
+      rows: rows.map((c: any) => ({
+        ...c, tenantId, devices: 1, deviceVisits: 1, unread: 0, isKnownDevice: true,
+        completedCount: 0, cancelledCount: 0, queueCount: 0, activeCount: 0, spentCentimes: 0,
+        firstBookingAt: null, lastBookingAt: null, lastSeenAt: null, email: null, locale: 'ar',
+        blockedReason: null,
+      })) as any,
+      total: rows.length, limit: 100, offset: 0, search: null, orphanBookings: 0,
+      serverTime: new Date().toISOString(),
+    }
+  },
+
+  async adminCustomerDetail(_tenantId: string, customerId: string) {
+    await delay(null)
+    return {
+      customer: {
+        id: customerId, fullName: 'Mock', phone: '0600000000', email: null, locale: 'ar',
+        isBlocked: false, blockedReason: null, noShowCount: 0,
+        createdAt: new Date().toISOString(), lastSeenAt: null,
+      },
+      devices: [], bookings: [], notifications: [], serverTime: new Date().toISOString(),
+    }
+  },
+
+  async adminCustomerStats(tenantId: string) {
+    await delay(null)
+    const rows = await this.listCustomers(tenantId)
+    return {
+      customers: rows.length, blocked: 0, devices: rows.length, knownDevices: rows.length,
+      queueWaiting: 0, pending: 0, serving: 0, repeatCustomers: 0, unreadNotifications: 0,
+      topCustomers: [], serverTime: new Date().toISOString(),
+    }
+  },
+
+  async adminBlockCustomer(_tenantId: string, _customerId: string, blocked: boolean, reason?: string | null) {
+    await delay(null)
+    return { isBlocked: blocked, blockedReason: reason ?? null }
+  },
+
+  async adminNotifyCustomer() {
+    await delay(null)
+    return { notificationId: 'mock', reachable: true }
+  },
+
+  async adminDevices() {
+    await delay(null)
+    return { devices: [] }
   },
 
   async queuePublic(slug: string, _day?: string | null): Promise<PublicQueue> {

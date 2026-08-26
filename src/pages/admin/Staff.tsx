@@ -1,6 +1,7 @@
 import { PageHeader } from '@/components/shared/PageHeader'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Button, EmptyState, Field, IconButton, Input, Modal, Spinner } from '@/components/ui'
+import { StaffPhotoDialog } from '@/components/admin/StaffPhotoDialog'
 import { data } from '@/data'
 import { useLocale } from '@/contexts/LocaleContext'
 import { useTenantBundle, useTenant } from '@/contexts/TenantContext'
@@ -40,7 +41,7 @@ export default function StaffPage() {
   const [busy, setBusy] = useState(false)
   const [photoBusy, setPhotoBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const fileRef = useRef<HTMLInputElement>(null)
+  const [photoOpen, setPhotoOpen] = useState(false)
 
   const onPickPhoto = async (file: File) => {
     if (!editingStaff?.id) {
@@ -326,27 +327,26 @@ export default function StaffPage() {
               {editingStaff?.avatarUrl ? (
                 <img src={editingStaff.avatarUrl} alt="" className="photo-edit__preview" />
               ) : (
-                <div className="photo-edit__preview photo-edit__preview--empty" style={{ backgroundColor: editingStaff?.color ?? '#0E7C86' }}>
-                  {(editingStaff?.displayName ?? '؟').charAt(0)}
+                <div
+                  className="photo-edit__preview photo-edit__preview--empty"
+                  style={{ backgroundColor: editingStaff?.color ?? '#0E7C86' }}
+                >
+                  {(editingStaff?.displayName ?? '?').charAt(0)}
                 </div>
               )}
               <div className="photo-edit__actions">
-                <input
-                  ref={fileRef}
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/*"
-                  hidden
-                  onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void onPickPhoto(f) }}
-                />
-                <Button size="sm" variant="outline" loading={photoBusy} disabled={!editingStaff?.id} onClick={() => fileRef.current?.click()}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  loading={photoBusy}
+                  disabled={!editingStaff?.id}
+                  onClick={() => setPhotoOpen(true)}
+                >
                   {editingStaff?.avatarUrl ? t('admin.changePhoto') : t('admin.uploadPhoto')}
                 </Button>
-                {editingStaff?.avatarUrl && (
-                  <Button size="sm" variant="danger" loading={photoBusy} onClick={() => void onRemovePhoto()}>
-                    {t('admin.removePhoto')}
-                  </Button>
-                )}
-                <p className="photo-edit__hint">{!editingStaff?.id ? t('admin.saveStaffFirst') : t('admin.photoHint')}</p>
+                <p className="photo-edit__hint">
+                  {!editingStaff?.id ? t('admin.saveStaffFirst') : t('admin.photoHint')}
+                </p>
               </div>
             </div>
           </Field>
@@ -427,6 +427,16 @@ export default function StaffPage() {
           <button type="submit" hidden />
         </form>
       </Modal>
+
+      <StaffPhotoDialog
+        open={photoOpen && !!editingStaff?.id}
+        onClose={() => setPhotoOpen(false)}
+        name={editingStaff?.displayName ?? ''}
+        color={editingStaff?.color ?? '#0E7C86'}
+        avatarUrl={editingStaff?.avatarUrl ?? null}
+        onUpload={onPickPhoto}
+        onRemove={onRemovePhoto}
+      />
     </section>
   )
 }

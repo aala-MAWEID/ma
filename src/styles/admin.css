@@ -700,3 +700,181 @@
     font-size: 16px;
   }
 }
+
+/* ---- V17 Customer Registry Dashboard ---------------------------------- */
+.cust-page { display: grid; gap: 20px; }
+.cust-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px; }
+.cust-head h1 { margin: 0; font-size: 24px; font-weight: 800; }
+.cust-head p { margin: 4px 0 0; font-size: 14px; opacity: .7; }
+.cust-head__actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.cust-head__actions > :first-child { width: 220px; }
+
+.cust-kpis { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+.cust-kpi { display: flex; flex-direction: column; gap: 2px; padding: 16px; border-radius: 14px; background: var(--mw-surface, #fff); border: 1px solid var(--mw-border, rgba(0,0,0,.08)); }
+.cust-kpi__num { font-size: 26px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.cust-kpi__label { font-size: 12px; opacity: .75; }
+
+.cust-note { margin: 0; padding: 8px 12px; font-size: 13px; font-weight: 700; color: #b42318; background: rgba(180,35,24,.06); border-radius: 8px; }
+
+.cust-table-wrap { overflow-x: auto; background: var(--mw-surface, #fff); border-radius: 16px; border: 1px solid var(--mw-border, rgba(0,0,0,.08)); }
+.cust-table { width: 100%; border-collapse: collapse; text-align: start; font-size: 13px; }
+.cust-table th { padding: 12px 14px; background: var(--mw-surface-2, #f9fafb); font-weight: 700; opacity: .8; border-bottom: 1px solid var(--mw-border, rgba(0,0,0,.08)); }
+.cust-table td { padding: 12px 14px; border-bottom: 1px solid var(--mw-border, rgba(0,0,0,.05)); }
+.cust-table tr:last-child td { border-bottom: 0; }
+.cust-table tr.is-blocked td { opacity: .6; }
+
+.cust-link { border: 0; background: transparent; padding: 0; font-size: 13px; font-weight: 700; text-decoration: underline; cursor: pointer; color: var(--mw-brand-700); text-align: start; }
+.cust-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; padding: 2px 6px; border-radius: 999px; background: rgba(180,35,24,.1); color: #b42318; margin-inline-start: 6px; }
+.cust-dot { display: inline-block; width: 6px; height: 6px; border-radius: 999px; background: #0e7c86; margin-inline-start: 6px; vertical-align: middle; }
+
+.cust-actions { display: flex; align-items: center; gap: 8px; }
+.cust-icon { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--mw-border, rgba(0,0,0,.1)); background: var(--mw-surface, #fff); cursor: pointer; font-size: 12px; text-decoration: none; color: inherit; }
+.cust-icon:hover { background: var(--mw-surface-2, #f9fafb); }
+
+.cust-pager { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 13px; opacity: .8; }
+
+/* ---- detail drawer inside modal --------------------------------------- */
+.cust-detail { display: grid; gap: 14px; padding: 4px 0; }
+.cust-detail__head { display: grid; gap: 4px; padding-bottom: 12px; border-bottom: 1px solid var(--mw-border, rgba(0,0,0,.08)); }
+.cust-detail__head h3 { margin: 0; font-size: 18px; font-weight: 800; }
+.cust-detail h4 { margin: 12px 0 2px; font-size: 14px; font-weight: 700; opacity: .85; }
+
+.cust-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.cust-list li { display: grid; gap: 2px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--mw-border, rgba(0,0,0,.08)); background: var(--mw-surface-2, #f9fafb); font-size: 13px; position: relative; }
+.cust-list li strong { font-size: 13px; }
+.cust-list li span { opacity: .75; }
+.cust-list li .cust-icon { position: absolute; inset-inline-end: 12px; top: 10px; }
+.cust-token { font-family: monospace; font-size: 11px; opacity: .5; margin-top: 4px; }
+
+@media (min-width: 861px) {
+  .cust-page { gap: 28px; }
+  .cust-kpis { gap: 16px; }
+  .cust-kpi { padding: 22px; border-radius: 18px; }
+  .cust-kpi__num { font-size: 34px; }
+  .cust-table th, .cust-table td { padding: 14px 18px; }
+}
+
+
+/* ==========================================================================
+   V17.6b staff photo dialog. Bottom sheet on phones, centred card on desktop.
+   It renders in a portal above .scrim so it can open from inside the staff
+   modal. Every dvh unit keeps a vh fallback for iOS Safari 15.0-15.3.
+   ========================================================================== */
+.photo-dlg {
+  position: fixed;
+  inset: 0;
+  z-index: calc(var(--z-modal, 900) + 20);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgb(0 0 0 / 55%);
+}
+.photo-dlg__card {
+  inline-size: 100%;
+  max-inline-size: 520px;
+  background: var(--mw-surface);
+  color: var(--mw-ink);
+  border-start-start-radius: 18px;
+  border-start-end-radius: 18px;
+  padding: var(--space-4);
+  padding-block-end: calc(var(--space-4) + env(safe-area-inset-bottom, 0px));
+  display: grid;
+  gap: var(--space-3);
+  max-block-size: 92vh;
+  max-block-size: 92dvh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  animation: photo-dlg-in 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@keyframes photo-dlg-in {
+  from { transform: translateY(14px); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .photo-dlg__card { animation: none; }
+}
+.photo-dlg__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.photo-dlg__title { margin: 0; font-size: 16px; font-weight: 700; }
+.photo-dlg__close {
+  inline-size: 40px;
+  block-size: 40px;
+  border: 1px solid var(--mw-line);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--mw-ink);
+  font-size: 16px;
+  cursor: pointer;
+}
+.photo-dlg__close:disabled { opacity: 0.5; cursor: default; }
+.photo-dlg__drop {
+  border: 1px dashed var(--mw-line);
+  border-radius: var(--r-md, 14px);
+  padding: var(--space-4);
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
+  text-align: center;
+}
+.photo-dlg__drop.is-over {
+  border-color: var(--mw-brand, #0e7c86);
+  background: var(--mw-surface-2);
+}
+.photo-dlg__avatar {
+  inline-size: 128px;
+  block-size: 128px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--mw-line);
+}
+.photo-dlg__initial {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 700;
+  font-size: 44px;
+}
+.photo-dlg__hint { margin: 0; font-size: var(--text-xs); color: var(--mw-ink-3); }
+.photo-dlg__hint--desktop { display: none; }
+.photo-dlg__actions { display: grid; gap: var(--space-2); }
+.photo-dlg__foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  min-block-size: 34px;
+}
+.photo-dlg__busy {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--mw-ink-3);
+}
+/* Visually hidden but still laid out: iOS refuses .click() on display:none. */
+.photo-dlg__vh {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  inline-size: 1px;
+  block-size: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+@media (min-width: 861px) {
+  .photo-dlg { align-items: center; padding: var(--space-4); }
+  .photo-dlg__card {
+    border-radius: 18px;
+    max-block-size: 86vh;
+    max-block-size: 86dvh;
+  }
+  .photo-dlg__actions { grid-template-columns: 1fr 1fr; }
+  .photo-dlg__hint--desktop { display: block; }
+  .photo-dlg__avatar { inline-size: 148px; block-size: 148px; }
+}
+

@@ -8,6 +8,7 @@ import { cn } from '@/lib/cn'
 import type { Locale } from '@/data/domain'
 import { GoogleButton } from '@/components/shared/GoogleButton'
 import { MenuIcon, CloseIcon, CalendarIcon, QueueIcon, ListIcon, ChevronIcon, UserIcon } from '@/components/ui/icons'
+import { NotificationCenter } from '@/components/public/NotificationCenter'
 
 export function Header() {
   const { t, locale, setLocale } = useLocale()
@@ -100,6 +101,7 @@ export function Header() {
           </nav>
 
           <div className="site-head__side">
+            <NotificationCenter />
             <select
               className="lang"
               value={locale}
@@ -113,6 +115,7 @@ export function Header() {
           </div>
 
           <div className="site-head__mobile-auth">
+            <NotificationCenter />
             <select
               className="lang"
               value={locale}

@@ -9,6 +9,8 @@ import { Button, EmptyState, Field, Input, Spinner } from '@/components/ui'
 import { data } from '@/data'
 import type { MyBookingRow, AgendaItem } from '@/data/adapter'
 import { formatMoney } from '@/lib/money'
+import { formatDateTime } from '@/lib/time'
+import { claimCode } from '@/hooks/useDevice'
 
 export default function Me() {
   const { slug = '' } = useParams<{ slug: string }>()
@@ -36,19 +38,16 @@ export default function Me() {
     })
   }, [loadMine])
 
-  function fmt(iso: string) {
-    return new Intl.DateTimeFormat(locale === 'fr' ? 'fr-MA' : 'ar-MA', {
-      dateStyle: 'medium',
-      timeStyle: 'short',
-      timeZone: bundle.tenant.timeZone ?? 'Africa/Casablanca',
-    }).format(new Date(iso))
-  }
+  const fmt = (d: unknown) => formatDateTime(d as never, bundle.tenant.timeZone, locale)
 
   async function byPhone() {
     if (!phone.trim()) return
     setBusy(true)
     try {
       const found = (await data.listBookingsByPhone(bundle.tenant.id, phone.trim())) as unknown as AgendaItem[]
+      for (const f of found) {
+        if (f.code) void claimCode(bundle.tenant.slug, f.code)
+      }
       const mapped: MyBookingRow[] = found.map((f) => ({
         id: f.id,
         code: f.code,

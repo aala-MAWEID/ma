@@ -10,6 +10,8 @@ export { useHold } from '@/hooks/useHold'
 export { useAdminCalendar } from '@/hooks/useAdminCalendar'
 export { useDragBooking } from '@/hooks/useDragBooking'
 export { useTurnStatus } from '@/hooks/useTurnStatus'
+export { useDevice, ensureHello, deviceTokenOf, claimCode } from '@/hooks/useDevice'
+export { useGuestFeed } from '@/hooks/useGuestFeed'
 
 /** Re-render on an interval. Used by the hold countdown and the now-line. */
 export function useTick(ms: number, enabled = true): number {

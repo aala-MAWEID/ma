@@ -1,5 +1,5 @@
 {
-  "version": "5.0.0",
+  "version": "5.1.0",
   "generatedAt": "2026-08-25T12:00:00Z",
   "publicFunctions": [
     { "name": "get_tenant_bundle", "args": ["p_slug"] },
@@ -15,6 +15,12 @@
     { "name": "queue_join", "args": ["p_slug", "p_service_id", "p_staff_id", "p_full_name", "p_phone", "p_notes"] },
     { "name": "queue_public", "args": ["p_slug", "p_day"] },
     { "name": "turn_status", "args": ["p_code"] },
+    { "name": "guest_hello", "args": ["p_slug", "p_device_token", "p_user_agent", "p_platform", "p_locale", "p_time_zone"] },
+    { "name": "guest_claim", "args": ["p_slug", "p_device_token", "p_code"] },
+    { "name": "guest_feed", "args": ["p_slug", "p_device_token", "p_limit"] },
+    { "name": "guest_mark_read", "args": ["p_device_token", "p_ids"] },
+    { "name": "guest_set_prefs", "args": ["p_slug", "p_device_token", "p_sound", "p_push", "p_label"] },
+    { "name": "queue_counts", "args": ["p_slug", "p_device_token"] },
     { "name": "auth_status", "args": ["p_slug"] },
     { "name": "health_check", "args": ["p_slug"] }
   ],
@@ -62,6 +68,12 @@
     { "name": "upsert_time_off", "args": ["p_tenant_id", "p_id", "p_staff_id", "p_starts_at", "p_ends_at", "p_reason"] },
     { "name": "delete_time_off", "args": ["p_tenant_id", "p_id"] },
     { "name": "set_service_price_visibility", "args": ["p_tenant_id", "p_service_id", "p_hidden"] },
+    { "name": "admin_customers", "args": ["p_tenant_id", "p_search", "p_limit", "p_offset"] },
+    { "name": "admin_customer_detail", "args": ["p_tenant_id", "p_customer_id"] },
+    { "name": "admin_customer_stats", "args": ["p_tenant_id"] },
+    { "name": "admin_block_customer", "args": ["p_tenant_id", "p_customer_id", "p_blocked", "p_reason"] },
+    { "name": "admin_notify_customer", "args": ["p_tenant_id", "p_booking_id", "p_title", "p_body", "p_urgent"] },
+    { "name": "admin_devices", "args": ["p_tenant_id", "p_limit"] },
     { "name": "api_manifest", "args": [] },
     { "name": "get_settings_schema", "args": [] }
   ]

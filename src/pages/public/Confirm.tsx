@@ -1,4 +1,6 @@
 import { Link, useParams } from 'react-router-dom'
+import { useEffect } from 'react'
+import { claimCode } from '@/hooks/useDevice'
 import { Spinner } from '@/components/ui'
 import { StatusPill } from '@/components/shared/StatusPill'
 import { TurnTracker } from '@/components/booking/TurnTracker'
@@ -16,6 +18,10 @@ export default function Confirm() {
   const bundle = useTenantBundle()
   const { code, slug } = useParams()
   const state = useAsync(() => data.getBookingByCode(code ?? ''), [code], Boolean(code))
+
+  useEffect(() => {
+    if (code && slug) void claimCode(slug, code)
+  }, [code, slug])
 
   if (state.loading) {
     return (
