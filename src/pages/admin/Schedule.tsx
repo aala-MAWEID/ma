@@ -8,6 +8,7 @@ import { Button, EmptyState, Field, Input, Spinner } from '@/components/ui'
 import { data } from '@/data'
 import type { DayScheduleRow } from '@/data/adapter'
 import { formatMoney } from '@/lib/money'
+import { formatTime } from '@/lib/time'
 
 function todayISO() {
   const d = new Date()
@@ -42,13 +43,8 @@ export default function Schedule() {
     })
   }, [load])
 
-  function time(iso: string) {
-    return new Intl.DateTimeFormat(locale === 'fr' ? 'fr-MA' : 'ar-MA', {
-      hour: '2-digit',
-      minute: '2-digit',
-      timeZone: bundle.tenant.timeZone ?? 'Africa/Casablanca',
-    }).format(new Date(iso))
-  }
+  const timeZone = bundle.tenant.timeZone ?? 'Africa/Casablanca'
+  const time = (iso: string | null) => formatTime(iso, timeZone, locale)
 
   async function cancel(r: DayScheduleRow) {
     if (!window.confirm(t('admin.confirmCancelBooking'))) return

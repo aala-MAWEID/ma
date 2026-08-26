@@ -878,3 +878,335 @@
   .photo-dlg__avatar { inline-size: 148px; block-size: 148px; }
 }
 
+/* ===================================================================
+   V18.3 — Queue board (mobile first, desktop enhanced at 861px)
+   Scoped under .admin-queue-board so generic words cannot leak.
+   =================================================================== */
+.admin-queue-board {
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+	padding-block-end: 96px; /* clears the mobile bottom bar */
+}
+
+.admin-queue-board .title-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
+	flex-wrap: wrap;
+}
+
+/* ---------- "in the chair" strip ---------- */
+.admin-queue-board .queue-board-serving-strip {
+	border: 1px solid var(--mw-border, #e5e7eb);
+	border-radius: 16px;
+	background: var(--mw-card, #fff);
+	padding: 12px;
+}
+
+.admin-queue-board .strip-title {
+	margin: 0 0 10px;
+	font-size: 15px;
+	font-weight: 700;
+	color: var(--mw-ink, #111827);
+}
+
+.admin-queue-board .strip-empty {
+	border: 1px dashed var(--mw-border, #d1d5db);
+	border-radius: 12px;
+	padding: 18px 12px;
+	text-align: center;
+	color: var(--mw-ink-muted, #6b7280);
+	font-size: 14px;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 10px;
+}
+
+.admin-queue-board .strip-cards {
+	display: grid;
+	grid-template-columns: 1fr;
+	gap: 10px;
+}
+
+.admin-queue-board .serving-card {
+	border: 1px solid var(--mw-border, #e5e7eb);
+	border-radius: 14px;
+	background: var(--mw-bg, #f9fafb);
+	padding: 12px;
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	position: relative;
+	overflow: hidden;
+}
+
+/* the barber colour rail: inline-start works in both RTL and LTR */
+.admin-queue-board .serving-card::before {
+	content: '';
+	position: absolute;
+	inset-block: 0;
+	inset-inline-start: 0;
+	inline-size: 5px;
+	background: var(--mw-brand, #10b981);
+}
+
+.admin-queue-board .serving-card__head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	padding-inline-start: 8px;
+}
+
+.admin-queue-board .code {
+	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+	font-size: 12px;
+	font-weight: 700;
+	color: var(--mw-ink-muted, #6b7280);
+	background: var(--mw-card, #fff);
+	border: 1px solid var(--mw-border, #e5e7eb);
+	border-radius: 999px;
+	padding: 2px 8px;
+	white-space: nowrap;
+}
+
+.admin-queue-board .staff-tag {
+	font-size: 12px;
+	font-weight: 600;
+	border: 1.5px solid var(--mw-border, #e5e7eb);
+	border-radius: 999px;
+	padding: 2px 10px;
+	color: var(--mw-ink, #111827);
+	background: var(--mw-card, #fff);
+	white-space: nowrap;
+	max-inline-size: 46vw;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.admin-queue-board .serving-card__body {
+	padding-inline-start: 8px;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	min-inline-size: 0;
+}
+
+.admin-queue-board .name {
+	margin: 0;
+	font-size: 16px;
+	font-weight: 700;
+	color: var(--mw-ink, #111827);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.admin-queue-board .service {
+	margin: 0;
+	font-size: 13px;
+	color: var(--mw-ink-muted, #6b7280);
+}
+
+.admin-queue-board .contacts {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin-block-start: 2px;
+}
+
+.admin-queue-board .link-action {
+	font-size: 13px;
+	font-weight: 600;
+	text-decoration: none;
+	color: var(--mw-brand, #10b981);
+	border: 1px solid var(--mw-border, #e5e7eb);
+	border-radius: 999px;
+	padding: 4px 10px;
+	min-block-size: 32px;
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.admin-queue-board .serving-card__actions {
+	display: flex;
+	gap: 8px;
+	padding-inline-start: 8px;
+}
+
+.admin-queue-board .serving-card__actions > * {
+	flex: 1 1 0;
+}
+
+/* ---------- waiting list ---------- */
+.admin-queue-board .queue-board-waiting {
+	border: 1px solid var(--mw-border, #e5e7eb);
+	border-radius: 16px;
+	background: var(--mw-card, #fff);
+	padding: 12px;
+}
+
+.admin-queue-board .waiting-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	margin-block-end: 10px;
+}
+
+.admin-queue-board .waiting-head h2 {
+	margin: 0;
+	font-size: 15px;
+	font-weight: 700;
+}
+
+.admin-queue-board .waiting-list {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+/* mobile: number + info on row 1, phone + actions wrap below */
+.admin-queue-board .waiting-row {
+	display: grid;
+	grid-template-columns: 44px minmax(0, 1fr) auto;
+	align-items: center;
+	gap: 10px;
+	border: 1px solid var(--mw-border, #e5e7eb);
+	border-radius: 14px;
+	background: var(--mw-bg, #f9fafb);
+	padding: 10px;
+}
+
+.admin-queue-board .pos-badge {
+	inline-size: 44px;
+	block-size: 44px;
+	border-radius: 999px;
+	background: var(--mw-brand, #10b981);
+	color: #fff;
+	font-weight: 800;
+	font-size: 16px;
+	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex: 0 0 auto;
+}
+
+/* #1 is the next person: ring it so it reads at a glance */
+.admin-queue-board .waiting-row:first-child .pos-badge {
+	box-shadow: 0 0 0 3px color-mix(in srgb, var(--mw-brand, #10b981) 28%, transparent);
+}
+
+.admin-queue-board .info-block {
+	min-inline-size: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 3px;
+}
+
+.admin-queue-board .meta-row {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 5px;
+	font-size: 12px;
+	color: var(--mw-ink-muted, #6b7280);
+}
+
+.admin-queue-board .contact-block {
+	display: flex;
+	gap: 6px;
+	flex: 0 0 auto;
+}
+
+.admin-queue-board .btn-icon {
+	inline-size: 36px;
+	block-size: 36px;
+	border-radius: 10px;
+	border: 1px solid var(--mw-border, #e5e7eb);
+	background: var(--mw-card, #fff);
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	text-decoration: none;
+	font-size: 16px;
+	line-height: 1;
+}
+
+.admin-queue-board .action-buttons {
+	grid-column: 1 / -1;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	padding-block-start: 8px;
+	border-block-start: 1px solid var(--mw-border, #e5e7eb);
+}
+
+.admin-queue-board .action-buttons > *:first-child {
+	flex: 1 1 120px;
+}
+
+.admin-queue-board .queue-empty-box {
+	border: 1px dashed var(--mw-border, #d1d5db);
+	border-radius: 12px;
+	padding: 26px 12px;
+	text-align: center;
+	color: var(--mw-ink-muted, #6b7280);
+}
+
+.admin-queue-board .queue-empty-box p {
+	margin: 0;
+}
+
+/* ---------- desktop ---------- */
+@media (min-width: 861px) {
+	.admin-queue-board {
+		gap: 18px;
+	}
+
+	.admin-queue-board .strip-cards {
+		grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+		gap: 12px;
+	}
+
+	/* one clean line per customer: number | info | phone | actions */
+	.admin-queue-board .waiting-row {
+		grid-template-columns: 56px minmax(0, 1fr) auto auto;
+		padding: 12px 14px;
+	}
+
+	.admin-queue-board .pos-badge {
+		inline-size: 56px;
+		block-size: 56px;
+		font-size: 20px;
+	}
+
+	.admin-queue-board .action-buttons {
+		grid-column: auto;
+		padding-block-start: 0;
+		border-block-start: 0;
+		flex-wrap: nowrap;
+	}
+
+	.admin-queue-board .action-buttons > *:first-child {
+		flex: 0 0 auto;
+	}
+
+	.admin-queue-board .staff-tag {
+		max-inline-size: none;
+	}
+}
+
+/* respect the OS reduced-motion setting */
+@media (prefers-reduced-motion: reduce) {
+	.admin-queue-board * {
+		transition: none !important;
+	}
+}
+
+

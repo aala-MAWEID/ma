@@ -50,6 +50,14 @@ export type ErrorCode =
   | 'shop_already_claimed'
   | 'image_unsupported'
   | 'image_too_large'
+  // new in V18
+  | 'shop_closed'
+  | 'not_found'
+  | 'invalid_input'
+  | 'invalid_service'
+  | 'invalid_staff'
+  | 'invalid_email'
+  | 'device_unknown'
 
 export class AppError extends Error {
   readonly code: ErrorCode
@@ -123,6 +131,13 @@ const KNOWN = new Set<string>([
   'unknown',
   'image_unsupported',
   'image_too_large',
+  'shop_closed',
+  'not_found',
+  'invalid_input',
+  'invalid_service',
+  'invalid_staff',
+  'invalid_email',
+  'device_unknown',
 ])
 
 /**

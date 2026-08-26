@@ -7,6 +7,7 @@ import { useToast } from '@/contexts/ToastContext'
 import { formatMoney } from '@/lib/money'
 import { normalizePhone } from '@/lib/validation'
 import { errorCodeOf, errorKey } from '@/data/errors'
+import { localDeviceToken } from '@/lib/device'
 import { claimCode, useDevice } from '@/hooks/useDevice'
 import { useGuestFeed } from '@/hooks/useGuestFeed'
 import type { QueueCounts } from '@/data/guest'
@@ -92,10 +93,6 @@ export default function QueueLive() {
   const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault()
     const normPhone = normalizePhone(phone)
-    if (!normPhone) {
-      setJoinError(t('error.invalid_phone'))
-      return
-    }
     if (!fullName.trim()) {
       setJoinError(t('error.invalid_name'))
       return
@@ -104,17 +101,17 @@ export default function QueueLive() {
     setJoining(true)
     setJoinError(null)
     try {
-      const b = await data.queueJoin(
-        bundle.tenant.slug,
+      const b = await data.queueTake({
+        slug: bundle.tenant.slug,
         serviceId,
-        staffId || null,
-        fullName.trim(),
-        normPhone,
-        notes.trim() || null,
-      )
+        staffId: staffId || null,
+        fullName: fullName.trim(),
+        phone: normPhone || null,
+        notes: notes.trim() || null,
+        deviceToken: localDeviceToken(),
+      })
       // Bind this ticket to the device so the turn alert works after a refresh.
-      const code = (b as unknown as { code?: string })?.code
-      if (code) await claimCode(slug, code)
+      if (b.code) await claimCode(slug, b.code)
 
       setShowJoinModal(false)
       toast(t('queue.joinedSuccess'), 'ok')
@@ -143,11 +140,39 @@ export default function QueueLive() {
   const ahead = counts?.ahead
   const waitMin = counts?.waitMin
   const myTicket = guest.activeTicket // my own ticket only
+  const isShopOpen = counts?.shopOpen !== false
   const full =
     typeof counts?.maxSize === 'number' && counts.maxSize > 0 && waiting >= counts.maxSize
 
   return (
     <div className="wrap queue-live">
+      {/* Closed Notice when shop switch is off */}
+      {!isShopOpen && (
+        <div
+          style={{
+            marginBlockEnd: 16,
+            padding: 12,
+            borderRadius: 14,
+            backgroundColor: '#fef2f2',
+            border: '1px solid #fecaca',
+            color: '#991b1b',
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: 10,
+          }}
+        >
+          <span style={{ fontSize: 18, lineHeight: 1 }}>🔒</span>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 14, color: '#991b1b' }}>
+              {t('admin.shopClosedNow')}
+            </div>
+            <div style={{ fontSize: 13, color: '#b91c1c', marginBlockStart: 2 }}>
+              {t('admin.shopClosedHint')}
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="queue-live__header">
         <div>
           <h1 className="queue-live__title">{t('queue.title')}</h1>
@@ -156,7 +181,14 @@ export default function QueueLive() {
           </p>
         </div>
         {enabled && !myCode && (
-          <Button onClick={() => setShowJoinModal(true)} variant="primary" disabled={full}>
+          <Button
+            onClick={() => {
+              if (isShopOpen && !full) setShowJoinModal(true)
+            }}
+            variant="primary"
+            disabled={!isShopOpen || full}
+            style={!isShopOpen ? { opacity: 0.5, cursor: 'not-allowed' } : undefined}
+          >
             {full ? t('queue.queueFull') : t('queue.joinNow')}
           </Button>
         )}
@@ -251,14 +283,13 @@ export default function QueueLive() {
             />
           </Field>
 
-          <Field label={t('field.phone')} required>
+          <Field label={t('field.phone')}>
             <Input
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               type="tel"
               dir="ltr"
               placeholder="0612345678"
-              required
             />
           </Field>
 

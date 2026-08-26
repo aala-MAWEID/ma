@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Outlet, useParams } from 'react-router-dom'
 import { TenantProvider, useTenant } from '@/contexts/TenantContext'
 import { Header } from '@/components/shared/Header'
@@ -6,7 +6,8 @@ import { Footer } from '@/components/shared/Footer'
 import { Spinner, EmptyState } from '@/components/ui'
 import { useLocale } from '@/contexts/LocaleContext'
 import { copyText } from '@/lib/copyText'
-import { backend, backendDiagnostics } from '@/data'
+import { data, backend, backendDiagnostics } from '@/data'
+import { identifyDevice } from '@/lib/device'
 import {
   isSupabaseConfigured,
   supabaseNotices,
@@ -181,6 +182,13 @@ function Failure({ slug }: { slug: string }) {
 /** الموقع العام: الهيدر والفوتر يُرسمان هنا فقط، ولا تُعيدهما أي صفحة. */
 function PublicFrame({ slug }: { slug: string }) {
   const { bundle } = useTenant()
+
+  useEffect(() => {
+    if (slug) {
+      void identifyDevice(data, slug).catch((e) => console.warn('[device] identify failed', e))
+    }
+  }, [slug])
+
   if (!bundle) return <Failure slug={slug} />
   return (
     <div className="site-layout">

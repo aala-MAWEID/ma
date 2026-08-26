@@ -97,8 +97,8 @@ export type DayScheduleRow = {
   code: string
   status: string
   mode: string
-  startsAt: string
-  endsAt: string
+  startsAt: string | null
+  endsAt: string | null
   gapBeforeMin: number | null
   staffId: string
   staffName: string
@@ -110,6 +110,87 @@ export type DayScheduleRow = {
   priceCentimes: number | null
   currency: string | null
   notesCustomer: string | null
+}
+
+export type ShopStatus = {
+  found: boolean
+  open: boolean
+  note: string | null
+  changedAt: string | null
+  waiting: number
+  serving: number
+  serverTime: string
+}
+
+export type QueueBoardRow = {
+  pos: number
+  id: string
+  code: string
+  status: string
+  staffId: string | null
+  staffName: string | null
+  staffColor: string | null
+  serviceId: string | null
+  serviceName: string | null
+  durationMin: number | null
+  customerName: string | null
+  customerPhone: string | null
+  skippedCount: number
+  rank: number
+  createdAt: string | null
+  ahead: number
+  etaMin: number
+}
+
+export type QueueServingRow = {
+  id: string
+  code: string
+  status: string
+  staffId: string | null
+  staffName: string | null
+  staffColor: string | null
+  serviceName: string | null
+  durationMin: number | null
+  customerName: string | null
+  customerPhone: string | null
+  skippedCount: number
+  servedAt: string | null
+  remainMin: number
+}
+
+export type QueueBoard = {
+  shopOpen: boolean
+  shopNote: string | null
+  enabled: boolean
+  avgMin: number
+  maxSize: number
+  serving: QueueServingRow[]
+  waiting: QueueBoardRow[]
+  serverTime: string
+}
+
+export type QueueTakeResult = {
+  id: string
+  code: string
+  status: string
+  pos: number
+  ahead: number
+  etaMin: number
+  serverTime: string
+}
+
+export type DeviceIdentity = {
+  found: boolean
+  deviceToken: string
+  identityKey: string | null
+  isNew: boolean
+  visits: number
+  email: string | null
+  label: string | null
+  sound: boolean
+  push: boolean
+  activeTickets: number
+  serverTime: string
 }
 
 export type MyBookingRow = {
@@ -348,6 +429,43 @@ export interface DataAdapter {
   ): Promise<GuestPrefs>
   /** Public queue counters. NUMBERS ONLY — no other customer is exposed. */
   queueCounts(slug: string, deviceToken?: string | null): Promise<QueueCounts>
+
+  /** The single open/closed switch. Hours never close the shop. */
+  shopStatus(slug: string): Promise<ShopStatus>
+  setShopOpen(tenantId: string, open: boolean, note?: string | null): Promise<ShopStatus>
+  /** Whole dashboard queue in one round trip, already ordered by the server. */
+  queueBoard(tenantId: string): Promise<QueueBoard>
+  /** Take a number. Name required, phone optional, device token is the identity. */
+  queueTake(input: {
+    slug: string
+    serviceId: string
+    staffId?: string | null
+    fullName?: string | null
+    phone?: string | null
+    notes?: string | null
+    deviceToken?: string | null
+  }): Promise<QueueTakeResult>
+  /** Move anybody to an absolute position. 1 = next in the chair. */
+  queuePlace(tenantId: string, bookingId: string, position: number): Promise<number>
+  queueServe(tenantId: string, bookingId: string): Promise<void>
+  queueFinish(
+    tenantId: string,
+    bookingId: string,
+    outcome: 'completed' | 'no_show',
+    autoNext?: boolean,
+  ): Promise<{ nextId: string | null; nextName: string | null }>
+  /** Step 3 of device identity. Returns the authoritative token to store. */
+  guestIdentify(input: {
+    slug: string
+    deviceToken?: string | null
+    fingerprint?: string | null
+    userAgent?: string | null
+    platform?: string | null
+    locale?: string | null
+    timeZone?: string | null
+  }): Promise<DeviceIdentity>
+  /** Step 4. Same e-mail on another device = same person, no account. */
+  guestLinkEmail(slug: string, deviceToken: string, email: string): Promise<{ identityKey: string; devices: number }>
 
   // ---- V17 dashboard customer registry ----
   adminCustomers(

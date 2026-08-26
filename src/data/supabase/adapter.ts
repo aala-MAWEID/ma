@@ -16,6 +16,12 @@ import {
   type Decision,
   type HoldResult,
   type MyBookingRow,
+  type ShopStatus,
+  type QueueBoard,
+  type QueueBoardRow,
+  type QueueServingRow,
+  type QueueTakeResult,
+  type DeviceIdentity,
 } from '../adapter'
 import type {
   AgendaItem,
@@ -1072,6 +1078,156 @@ export const supabaseAdapter: DataAdapter = {
       p_slug: slug,
       p_device_token: deviceToken,
     })
+  },
+
+  // ---- V18 shop switch --------------------------------------------------
+  async shopStatus(slug: string): Promise<ShopStatus> {
+    const r = await rpc<any>('shop_status', { p_slug: slug })
+    return {
+      found: r?.found === true,
+      open: r?.open !== false,
+      note: r?.note ?? null,
+      changedAt: r?.changedAt ?? null,
+      waiting: Number(r?.waiting ?? 0),
+      serving: Number(r?.serving ?? 0),
+      serverTime: r?.serverTime ?? new Date().toISOString(),
+    }
+  },
+
+  async setShopOpen(tenantId: string, open: boolean, note?: string | null): Promise<ShopStatus> {
+    const r = await rpc<any>('set_shop_open', {
+      p_tenant_id: tenantId,
+      p_open: open,
+      p_note: note ?? null,
+    })
+    return {
+      found: true,
+      open: r?.open !== false,
+      note: r?.note ?? null,
+      changedAt: r?.changedAt ?? null,
+      waiting: 0,
+      serving: 0,
+      serverTime: new Date().toISOString(),
+    }
+  },
+
+  // ---- V18 queue engine -------------------------------------------------
+  async queueBoard(tenantId: string): Promise<QueueBoard> {
+    const r = await rpc<any>('queue_board', { p_tenant_id: tenantId })
+    return {
+      shopOpen: r?.shopOpen !== false,
+      shopNote: r?.shopNote ?? null,
+      enabled: r?.enabled !== false,
+      avgMin: Number(r?.avgMin ?? 0),
+      maxSize: Number(r?.maxSize ?? 0),
+      serving: Array.isArray(r?.serving) ? (r.serving as QueueServingRow[]) : [],
+      waiting: Array.isArray(r?.waiting) ? (r.waiting as QueueBoardRow[]) : [],
+      serverTime: r?.serverTime ?? new Date().toISOString(),
+    }
+  },
+
+  async queueTake(input: {
+    slug: string
+    serviceId: string
+    staffId?: string | null
+    fullName?: string | null
+    phone?: string | null
+    notes?: string | null
+    deviceToken?: string | null
+  }): Promise<QueueTakeResult> {
+    const r = await rpc<any>('queue_take', {
+      p_slug: input.slug,
+      p_service_id: input.serviceId,
+      p_staff_id: input.staffId ?? null,
+      p_full_name: input.fullName ?? null,
+      p_phone: input.phone ?? null,
+      p_notes: input.notes ?? null,
+      p_device_token: input.deviceToken ?? null,
+    })
+    return {
+      id: String(r?.id ?? ''),
+      code: String(r?.code ?? ''),
+      status: String(r?.status ?? 'queued'),
+      pos: Number(r?.pos ?? 0),
+      ahead: Number(r?.ahead ?? 0),
+      etaMin: Number(r?.etaMin ?? 0),
+      serverTime: r?.serverTime ?? new Date().toISOString(),
+    }
+  },
+
+  async queuePlace(tenantId: string, bookingId: string, position: number): Promise<number> {
+    const r = await rpc<any>('queue_place', {
+      p_tenant_id: tenantId,
+      p_booking_id: bookingId,
+      p_position: position,
+    })
+    return Number(r?.position ?? position)
+  },
+
+  async queueServe(tenantId: string, bookingId: string): Promise<void> {
+    await rpc('queue_serve', { p_tenant_id: tenantId, p_booking_id: bookingId })
+  },
+
+  async queueFinish(
+    tenantId: string,
+    bookingId: string,
+    outcome: 'completed' | 'no_show',
+    autoNext: boolean = true,
+  ): Promise<{ nextId: string | null; nextName: string | null }> {
+    const r = await rpc<any>('queue_finish', {
+      p_tenant_id: tenantId,
+      p_booking_id: bookingId,
+      p_outcome: outcome,
+      p_auto_next: autoNext,
+    })
+    return { nextId: r?.nextId ?? null, nextName: r?.nextName ?? null }
+  },
+
+  // ---- V18 device identity ---------------------------------------------
+  async guestIdentify(input: {
+    slug: string
+    deviceToken?: string | null
+    fingerprint?: string | null
+    userAgent?: string | null
+    platform?: string | null
+    locale?: string | null
+    timeZone?: string | null
+  }): Promise<DeviceIdentity> {
+    const r = await rpc<any>('guest_identify', {
+      p_slug: input.slug,
+      p_device_token: input.deviceToken ?? null,
+      p_fingerprint: input.fingerprint ?? null,
+      p_user_agent: input.userAgent ?? null,
+      p_platform: input.platform ?? null,
+      p_locale: input.locale ?? null,
+      p_time_zone: input.timeZone ?? null,
+    })
+    return {
+      found: r?.found === true,
+      deviceToken: String(r?.deviceToken ?? input.deviceToken ?? ''),
+      identityKey: r?.identityKey ?? null,
+      isNew: r?.isNew === true,
+      visits: Number(r?.visits ?? 1),
+      email: r?.email ?? null,
+      label: r?.label ?? null,
+      sound: r?.sound !== false,
+      push: r?.push === true,
+      activeTickets: Number(r?.activeTickets ?? 0),
+      serverTime: r?.serverTime ?? new Date().toISOString(),
+    }
+  },
+
+  async guestLinkEmail(
+    slug: string,
+    deviceToken: string,
+    email: string,
+  ): Promise<{ identityKey: string; devices: number }> {
+    const r = await rpc<any>('guest_link_email', {
+      p_slug: slug,
+      p_device_token: deviceToken,
+      p_email: email,
+    })
+    return { identityKey: String(r?.identityKey ?? ''), devices: Number(r?.devices ?? 1) }
   },
 
   // ================= V17 customer registry =================

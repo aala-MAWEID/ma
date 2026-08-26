@@ -1,0 +1,136 @@
+/* utilities.css - shim for utility class names used in JSX (no Tailwind in this project).
+   Additive only: every selector below is a class the codebase already emits. */
+
+/* ---- display / flex / grid ---- */
+.flex { display: flex; }
+.flex-col { flex-direction: column; }
+.flex-wrap { flex-wrap: wrap; }
+.flex-1 { flex: 1 1 0%; min-inline-size: 0; }
+.grid { display: grid; }
+.grid-cols-1 { grid-template-columns: 1fr; }
+.items-center { align-items: center; }
+.items-start { align-items: flex-start; }
+.items-end { align-items: flex-end; }
+.justify-between { justify-content: space-between; }
+.justify-end { justify-content: flex-end; }
+.text-center { text-align: center; }
+
+/* ---- gaps ---- */
+.gap-1 { gap: 4px; }
+.gap-2 { gap: 8px; }
+.gap-3 { gap: 12px; }
+.gap-4 { gap: 16px; }
+.space-y-2 > * + * { margin-block-start: 8px; }
+.space-y-3 > * + * { margin-block-start: 12px; }
+.space-y-4 > * + * { margin-block-start: 16px; }
+.space-y-6 > * + * { margin-block-start: 24px; }
+
+/* ---- padding / margin (logical) ---- */
+.p-0 { padding: 0; }
+.p-2 { padding: 8px; }
+.p-3 { padding: 12px; }
+.p-4 { padding: 16px; }
+.p-5 { padding: 20px; }
+.p-6 { padding: 24px; }
+.px-2 { padding-inline: 8px; }
+.py-1 { padding-block: 4px; }
+.py-4 { padding-block: 16px; }
+.pt-2 { padding-block-start: 8px; }
+.pt-3 { padding-block-start: 12px; }
+.pt-4 { padding-block-start: 16px; }
+.m-0 { margin: 0; }
+.mt-1 { margin-block-start: 4px; }
+.mt-2 { margin-block-start: 8px; }
+.mt-3 { margin-block-start: 12px; }
+.mt-4 { margin-block-start: 16px; }
+.mt-8 { margin-block-start: 32px; }
+.mb-2 { margin-block-end: 8px; }
+.mb-3 { margin-block-end: 12px; }
+.mb-4 { margin-block-end: 16px; }
+.mb-6 { margin-block-end: 24px; }
+.my-2 { margin-block: 8px; }
+
+/* ---- typography ---- */
+.text-xs { font-size: 0.75rem; }
+.text-sm { font-size: 0.875rem; }
+.text-base { font-size: 1rem; }
+.text-lg { font-size: 1.0625rem; }
+.text-xl { font-size: 1.25rem; }
+.text-3xl { font-size: 1.75rem; line-height: 1.15; }
+.font-medium { font-weight: 500; }
+.font-semibold { font-weight: 600; }
+.font-bold { font-weight: 700; }
+.font-extrabold { font-weight: 800; }
+.font-mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.whitespace-nowrap { white-space: nowrap; }
+.min-w-0 { min-inline-size: 0; }
+.overflow-hidden { overflow: hidden; }
+.list-none { list-style: none; }
+.cursor-pointer { cursor: pointer; }
+
+/* ---- colors (token-backed) ---- */
+.text-foreground { color: var(--mw-ink, #111827); }
+.text-subtle,
+.cust-muted { color: var(--mw-ink-muted, #6b7280); }
+.text-primary { color: var(--mw-brand, #0f766e); }
+.text-amber-600 { color: var(--mw-warn, #b45309); }
+.text-emerald-600 { color: var(--mw-ok, #059669); }
+
+/* ---- surfaces ---- */
+.bg-surface { background-color: var(--mw-surface, #ffffff); }
+.border { border: 1px solid var(--mw-border, #e5e7eb); }
+.border-2 { border-width: 2px; }
+.border-border { border-color: var(--mw-border, #e5e7eb); }
+.border-amber-400 { border-color: var(--mw-warn, #b45309); }
+.border-t { border-block-start: 1px solid var(--mw-border, #e5e7eb); }
+.rounded-lg { border-radius: 10px; }
+.rounded-xl { border-radius: 14px; }
+.rounded-full { border-radius: 999px; }
+.shadow-sm { box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06); }
+
+/* ---- sizing ---- */
+.w-9 { inline-size: 36px; }
+.h-9 { block-size: 36px; }
+.w-28 { inline-size: 112px; }
+.max-w-md { max-inline-size: 448px; }
+.max-w-2xl { max-inline-size: 672px; }
+.max-w-3xl { max-inline-size: 768px; }
+
+/* ---- effects ---- */
+.opacity-60 { opacity: 0.6; }
+.opacity-70 { opacity: 0.7; }
+.opacity-75 { opacity: 0.75; }
+.opacity-80 { opacity: 0.8; }
+.transition { transition: all 0.18s ease; }
+.transition-transform { transition: transform 0.18s ease; }
+
+/* ---- component classes referenced by JSX but never defined ---- */
+.alert--info {
+  border: 1px solid var(--mw-border-info, #bfdbfe);
+  background-color: var(--mw-surface-info, #eff6ff);
+  color: var(--mw-ink-info, #1e3a8a);
+}
+.alert--warn {
+  border: 1px solid var(--mw-border-warn, #fcd34d);
+  background-color: var(--mw-surface-warn, #fffbeb);
+  color: var(--mw-ink-warn, #92400e);
+}
+.checkbox {
+  inline-size: 18px;
+  block-size: 18px;
+  accent-color: var(--mw-brand, #0f766e);
+  flex: 0 0 auto;
+}
+.stat-card {
+  background-color: var(--mw-surface, #ffffff);
+  border: 1px solid var(--mw-border, #e5e7eb);
+  border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+/* ---- desktop refinement: two-column admin forms ---- */
+@media (min-width: 861px) {
+  .grid-cols-1 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .max-w-md { max-inline-size: 520px; }
+}

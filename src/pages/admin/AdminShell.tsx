@@ -17,6 +17,7 @@ import {
 import { data } from '@/data'
 import type { AuthStatus } from '@/data/adapter'
 import { cn } from '@/lib/cn'
+import { formatTime } from '@/lib/time'
 import { safeStorage } from '@/lib/safeStorage'
 
 const COLLAPSED_STORAGE_KEY = 'maweid.nav.collapsed'
@@ -172,9 +173,10 @@ export default function AdminShell() {
     )
   }
 
-  const formattedSyncTime = lastSynced.toLocaleTimeString(
-    locale === 'ar' ? 'ar-MA' : 'fr-FR',
-    { hour: '2-digit', minute: '2-digit', second: '2-digit' }
+  const formattedSyncTime = formatTime(
+    lastSynced,
+    bundle.tenant.timeZone ?? 'Africa/Casablanca',
+    locale,
   )
 
   return (

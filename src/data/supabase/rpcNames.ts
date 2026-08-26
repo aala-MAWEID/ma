@@ -217,4 +217,21 @@ export const RPC_DEFINITIONS: readonly RpcSignature[] = Object.freeze([
   { name: 'admin_devices', args: ['p_tenant_id', 'p_limit'] },
   { name: 'api_manifest', args: [] },
   { name: 'get_settings_schema', args: [] },
+
+  // V18 — queue core, shop switch, device identity
+  { name: 'shop_status', args: ['p_slug'] },
+  { name: 'set_shop_open', args: ['p_tenant_id', 'p_open', 'p_note'] },
+  { name: 'queue_board', args: ['p_tenant_id'] },
+  {
+    name: 'queue_take',
+    args: ['p_slug', 'p_service_id', 'p_staff_id', 'p_full_name', 'p_phone', 'p_notes', 'p_device_token'],
+  },
+  { name: 'queue_place', args: ['p_tenant_id', 'p_booking_id', 'p_position'] },
+  { name: 'queue_serve', args: ['p_tenant_id', 'p_booking_id'] },
+  { name: 'queue_finish', args: ['p_tenant_id', 'p_booking_id', 'p_outcome', 'p_auto_next'] },
+  {
+    name: 'guest_identify',
+    args: ['p_slug', 'p_device_token', 'p_fingerprint', 'p_user_agent', 'p_platform', 'p_locale', 'p_time_zone'],
+  },
+  { name: 'guest_link_email', args: ['p_slug', 'p_device_token', 'p_email'] },
 ])

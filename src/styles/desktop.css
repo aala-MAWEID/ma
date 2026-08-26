@@ -15,7 +15,8 @@
   }
 
   .burger,
-  .tabbar {
+  .tabbar,
+  .admin-tabbar {
     display: none;
   }
 

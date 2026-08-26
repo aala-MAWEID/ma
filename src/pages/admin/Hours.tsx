@@ -194,11 +194,22 @@ export default function Hours() {
   }
 
   async function save() {
-    if (!week || hasAnyError) return
+    if (!week) return
     setBusy(true)
     try {
-      await data.setWeekHours(tenantId, null, week)
-      setBaseline(JSON.stringify(week))
+      const cleaned: Day[] = week.map((d) => ({
+        weekday: d.weekday,
+        windows: d.windows
+          .filter((w) => w.opensMin !== w.closesMin)
+          .map((w) =>
+            w.closesMin < w.opensMin
+              ? { opensMin: w.closesMin, closesMin: w.opensMin }
+              : { ...w },
+          )
+          .slice(0, 5),
+      }))
+      await data.setWeekHours(tenantId, null, cleaned)
+      setBaseline(JSON.stringify(cleaned))
       await reload()
       toast.success(t('common.saved'))
     } catch (e) {
@@ -261,6 +272,25 @@ export default function Hours() {
     <section className="admin-page" dir="rtl">
       <PageHeader title={t('admin.hours')} description={t('admin.hoursSubtitle')} />
 
+      {/* Advisory Notice */}
+      <div
+        style={{
+          borderRadius: 14,
+          border: '1px solid var(--mw-border-info, #bfdbfe)',
+          backgroundColor: 'var(--mw-surface-info, #eff6ff)',
+          padding: 12,
+          fontSize: 13,
+          color: 'var(--mw-ink, #1e3a8a)',
+          marginBlockEnd: 16,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+        }}
+      >
+        <span>ℹ️</span>
+        <span>{t('admin.hoursAreAdvisory')}</span>
+      </div>
+
       {/* Mode Controls */}
       <div className="bg-surface border border-border rounded-xl p-4 mb-6 shadow-sm space-y-4">
         <h3 className="font-bold text-base">{t('admin.hoursMode')}</h3>
@@ -317,7 +347,7 @@ export default function Hours() {
             return (
               <article
                 key={d.weekday}
-                className={`bg-surface border p-4 rounded-xl shadow-sm ${err ? 'border-destructive' : 'border-border'}`}
+                className={`bg-surface border p-4 rounded-xl shadow-sm ${err ? 'border-amber-400' : 'border-border'}`}
               >
                 <div className="flex items-center justify-between flex-wrap gap-2 mb-2">
                   <strong className="text-base">{dayName}</strong>
@@ -336,7 +366,7 @@ export default function Hours() {
                   </div>
                 </div>
 
-                {err && <p className="text-xs text-destructive font-medium my-2">⚠️ {err}</p>}
+                {err && <p className="text-xs text-amber-600 font-medium my-2">⚠️ {err}</p>}
 
                 {d.windows.length === 0 ? (
                   <p className="text-sm opacity-60 my-2">{t('common.closed')}</p>
@@ -352,7 +382,6 @@ export default function Hours() {
                             type="time"
                             step={300}
                             value={toHM(w.opensMin)}
-                            className={err ? 'field--invalid' : ''}
                             onChange={(e) => patch(d.weekday, i, 'opensMin', e.target.value)}
                           />
                         </Field>
@@ -361,7 +390,6 @@ export default function Hours() {
                             type="time"
                             step={300}
                             value={toHM(w.closesMin)}
-                            className={err ? 'field--invalid' : ''}
                             onChange={(e) => patch(d.weekday, i, 'closesMin', e.target.value)}
                           />
                         </Field>
@@ -399,7 +427,7 @@ export default function Hours() {
             </Button>
             <Button
               variant="primary"
-              disabled={!dirty || hasAnyError}
+              disabled={!dirty}
               loading={busy}
               onClick={() => void save()}
             >

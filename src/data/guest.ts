@@ -71,6 +71,7 @@ export type GuestPrefs = { soundEnabled: boolean; pushEnabled: boolean; label: s
 export type QueueCounts = {
   found: boolean
   enabled: boolean
+  shopOpen?: boolean
   waiting: number
   serving: number
   avgMin: number

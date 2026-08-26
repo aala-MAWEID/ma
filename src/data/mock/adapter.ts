@@ -58,7 +58,11 @@ import {
 } from '@/lib/time'
 import { normalizePhone } from '@/lib/validation'
 import { bookingCode, store, uid } from '@/data/mock/store'
-import { DEMO_OWNER } from '@/data/mock/seed'
+import { DEMO_OWNER, TENANT_ID } from '@/data/mock/seed'
+
+const MOCK_TENANT_ID = TENANT_ID
+let mockShopOpen = true
+let mockShopNote: string | null = null
 
 const LATENCY_MS = 180
 const mockDevices = new Map<string, number>()
@@ -1323,12 +1327,152 @@ export const mockAdapter: DataAdapter = {
     await delay(null)
     const q = await this.queuePublic(slug)
     return {
-      found: true, enabled: true,
+      found: true, enabled: true, shopOpen: mockShopOpen,
       waiting: q.waiting ?? 0, serving: q.serving ?? 0, avgMin: q.avgMin ?? 20,
       maxSize: null, ahead: null, waitMin: null,
       myStatus: null, myCode: null, myTicketNo: null,
       serverTime: new Date().toISOString(),
     }
+  },
+
+  // ---- V18 ---------------------------------------------------------------
+  async shopStatus(_slug: string) {
+    const q = await this.getQueue(MOCK_TENANT_ID)
+    return {
+      found: true,
+      open: mockShopOpen,
+      note: mockShopNote,
+      changedAt: new Date().toISOString(),
+      waiting: q.filter((t) => t.status !== 'serving').length,
+      serving: q.filter((t) => t.status === 'serving').length,
+      serverTime: new Date().toISOString(),
+    }
+  },
+
+  async setShopOpen(_tenantId: string, open: boolean, note?: string | null) {
+    mockShopOpen = open
+    mockShopNote = note ?? null
+    return this.shopStatus('mock')
+  },
+
+  async queueBoard(tenantId: string) {
+    const q = await this.getQueue(tenantId)
+    const waitingSrc = q.filter((t) => t.status !== 'serving')
+    return {
+      shopOpen: mockShopOpen,
+      shopNote: mockShopNote,
+      enabled: true,
+      avgMin: 30,
+      maxSize: 40,
+      serving: q
+        .filter((t) => t.status === 'serving')
+        .map((t) => ({
+          id: t.id,
+          code: t.code,
+          status: t.status,
+          staffId: t.staffId,
+          staffName: t.staffName,
+          staffColor: t.staffColor,
+          serviceName: t.serviceName,
+          durationMin: t.durationMin,
+          customerName: t.customerName,
+          customerPhone: t.customerPhone,
+          skippedCount: t.skippedCount,
+          servedAt: t.servedAt ? t.servedAt.toISOString() : null,
+          remainMin: Math.max(0, t.durationMin),
+        })),
+      waiting: waitingSrc.map((t, i) => ({
+        pos: i + 1,
+        id: t.id,
+        code: t.code,
+        status: t.status,
+        staffId: t.staffId,
+        staffName: t.staffName,
+        staffColor: t.staffColor,
+        serviceId: t.serviceId,
+        serviceName: t.serviceName,
+        durationMin: t.durationMin,
+        customerName: t.customerName,
+        customerPhone: t.customerPhone,
+        skippedCount: t.skippedCount,
+        rank: t.queueRank,
+        createdAt: t.createdAt.toISOString(),
+        ahead: i,
+        etaMin: waitingSrc.slice(0, i).reduce((sum, x) => sum + x.durationMin, 0),
+      })),
+      serverTime: new Date().toISOString(),
+    }
+  },
+
+  async queueTake(input: {
+    slug: string
+    serviceId: string
+    staffId?: string | null
+    fullName?: string | null
+    phone?: string | null
+    notes?: string | null
+    deviceToken?: string | null
+  }) {
+    if (!mockShopOpen) throw new AppError('shop_closed')
+    const ticket = await this.joinQueue({
+      tenantId: MOCK_TENANT_ID,
+      serviceId: input.serviceId,
+      staffId: input.staffId ?? null,
+      fullName: input.fullName ?? '',
+      phone: input.phone ?? '',
+      notes: input.notes ?? null,
+    })
+    return {
+      id: ticket.id,
+      code: ticket.code,
+      status: ticket.status,
+      pos: ticket.position,
+      ahead: Math.max(0, ticket.position - 1),
+      etaMin: ticket.etaMinutes,
+      serverTime: new Date().toISOString(),
+    }
+  },
+
+  async queuePlace(tenantId: string, bookingId: string, position: number) {
+    const q = await this.getQueue(tenantId)
+    const target = q.filter((t) => t.status !== 'serving')[position - 1]
+    await this.queueMove(bookingId, target?.id ?? null, null)
+    return position
+  },
+
+  async queueServe(_tenantId: string, bookingId: string) {
+    await this.queueCall(bookingId)
+  },
+
+  async queueFinish(
+    tenantId: string,
+    _bookingId: string,
+    outcome: 'completed' | 'no_show',
+    _autoNext: boolean = true,
+  ) {
+    const res = await this.queueNext(tenantId, null, outcome)
+    return { nextId: res.nextId, nextName: res.nextName }
+  },
+
+  async guestIdentify(input: { slug: string; deviceToken?: string | null }) {
+    const token = input.deviceToken ?? crypto.randomUUID()
+    return {
+      found: true,
+      deviceToken: token,
+      identityKey: `dev:${token}`,
+      isNew: !input.deviceToken,
+      visits: 1,
+      email: null,
+      label: null,
+      sound: true,
+      push: false,
+      activeTickets: 0,
+      serverTime: new Date().toISOString(),
+    }
+  },
+
+  async guestLinkEmail(_slug: string, _deviceToken: string, email: string) {
+    return { identityKey: `mail:${email.toLowerCase()}`, devices: 1 }
   },
 
   async adminCustomers(tenantId: string) {

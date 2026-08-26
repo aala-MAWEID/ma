@@ -159,7 +159,8 @@
   }
 
   /* شريط تنقل سفلي مثل التطبيقات */
-  .tabbar {
+  .tabbar,
+  .admin-tabbar {
     position: fixed;
     inset-inline: 0;
     inset-block-end: 0;
@@ -171,7 +172,10 @@
     border-block-start: 1px solid var(--mw-line);
     padding-block-end: var(--safe-b);
   }
-  .tabbar__item {
+  .tabbar__item,
+  .admin-tabbar__item,
+  .admin-tabbar > a,
+  .admin-tabbar > button {
     display: grid;
     place-items: center;
     min-block-size: var(--tabbar-h);
@@ -193,6 +197,68 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+
+  .admin-tabbar__icon-wrap {
+    position: relative;
+    display: grid;
+    place-items: center;
+  }
+  .admin-tabbar__icon {
+    font-size: 20px;
+    line-height: 1;
+  }
+  .admin-tabbar__label {
+    font-size: 11.5px;
+    margin-block-start: 2px;
+  }
+  .admin-tabbar__badge {
+    position: absolute;
+    inset-block-start: -4px;
+    inset-inline-end: -8px;
+    min-inline-size: 16px;
+    padding-inline: 4px;
+    border-radius: 999px;
+    background: var(--mw-err, #d32f2f);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    text-align: center;
+  }
+
+  .sheet--drawer {
+    max-block-size: 86vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .sheet__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding-block-end: 10px;
+    margin-block-end: 6px;
+    border-block-end: 1px solid var(--mw-line, #e5e7eb);
+  }
+  .sheet__title {
+    font-size: 15px;
+    font-weight: 700;
+  }
+  .sheet__nav {
+    display: grid;
+    gap: 2px;
+  }
+  .sheet__icon {
+    inline-size: 22px;
+    text-align: center;
+    flex: 0 0 auto;
+  }
+  .sheet__label {
+    flex: 1 1 auto;
+    min-inline-size: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   /* مساحة حتى لا يغطي الشريط المحتوى */

@@ -67,7 +67,7 @@ export default function Confirm() {
         <dl className="confirm__list">
           <div>
             <dt>{t('step.time')}</dt>
-            <dd>{formatDateTime(booking.startsAt, locale)}</dd>
+            <dd>{formatDateTime(booking.startsAt, bundle.tenant.timeZone, locale)}</dd>
           </div>
           <div>
             <dt>{t('step.service')}</dt>
